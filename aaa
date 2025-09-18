@@ -1,5 +1,5 @@
 ---Ediciones
----casi complto solo falta la busqueda.aaa
+---casi complto solo falta la busqueda.
 
 local JmodsLib = {}
 JmodsLib.__index = JmodsLib
@@ -824,10 +824,21 @@ function JmodsLib:CreateWindow(options)
     ScreenGui.Parent = game:GetService("CoreGui")
     ScreenGui.Name = options.Name or "JmodsLib"
 
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Parent = ScreenGui
+    local UserInputService = game:GetService("UserInputService")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+
+-- Detectar móvil y ajustar tamaño
+if UserInputService.TouchEnabled then
+    -- En móvil: usar el límite mínimo
+    MainFrame.Size = UDim2.new(0, 420, 0, 260)
+    MainFrame.Position = UDim2.new(0.5, -210, 0.5, -130)
+else
+    -- En PC: tamaño normal
     MainFrame.Size = UDim2.new(0, 520, 0, 360)
     MainFrame.Position = UDim2.new(0.5, -260, 0.5, -180)
+end
     MainFrame.BackgroundColor3 = themeBaseColor
     MainFrame.BackgroundTransparency = 0.05
     MainFrame.BorderSizePixel = 0
