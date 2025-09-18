@@ -1,0 +1,2519 @@
+---Ediciones
+---casi complto solo falta la busqueda.aaa
+
+local JmodsLib = {}
+JmodsLib.__index = JmodsLib
+
+-- SISTEMA DE AUTO GUARDADO DE TEMAS
+local ThemeStorage = {
+    FolderName = "JmodsLibThemes",
+    FileName = "SavedTheme.json",
+    DefaultTheme = "black" -- Cambiado a negro como defecto
+}
+
+-- Variables globales para el sistema de temas mejorado
+local CurrentTheme = nil
+local ThemeObservers = {} -- Lista de funciones observadoras
+local ElementsToTheme = {} -- Lista de elementos que necesitan tema
+local ThemeAppliedElements = {} -- Elementos que ya tienen tema aplicado
+local GlobalTitleBar = nil -- REFERENCIA GLOBAL AL TITLEBAR
+local PendingThemeApplication = false -- NUEVO: Flag para aplicación pendiente
+
+
+-- FUNCIÓN NUEVA: Aplicar colores de forma incremental para evitar tirones
+local RunService = game:GetService("RunService")
+local function applyColorsSmooth(baseColor, accentColor, inputColor)
+    -- Aplicar inmediatamente a elementos principales
+    applyColorsSmooth(baseColor, accentColor, inputColor)
+
+    -- Repartir el repintado del resto de elementos en varios frames
+    spawn(function()
+        for i, element in ipairs(ElementsToTheme) do
+            task.defer(function()
+                if element and element.Parent then
+                    applyThemeToDescendants(element, baseColor, accentColor, inputColor)
+                end
+            end)
+            if i % 15 == 0 then
+                RunService.Heartbeat:Wait()
+            end
+        end
+    end)
+end
+
+-- Función para cargar el tema guardado
+local function loadSavedTheme()
+    local success, result = pcall(function()
+        if readfile and isfile and isfolder then
+            local filePath = ThemeStorage.FolderName .. "/" .. ThemeStorage.FileName
+            if isfile(filePath) then
+                local data = readfile(filePath)
+                local decoded = game:GetService("HttpService"):JSONDecode(data)
+                return decoded.CurrentTheme or ThemeStorage.DefaultTheme
+            end
+        end
+        return ThemeStorage.DefaultTheme
+    end)
+    
+    if success then
+        print("🎨 Tema cargado: " .. (result or ThemeStorage.DefaultTheme))
+        return result or ThemeStorage.DefaultTheme
+    else
+        print("⚠️ No se pudo cargar el tema, usando por defecto: " .. ThemeStorage.DefaultTheme)
+        return ThemeStorage.DefaultTheme
+    end
+end
+
+-- Función para guardar el tema actual
+local function saveTheme(themeName)
+    local success = pcall(function()
+        if writefile and makefolder and isfolder then
+            -- Crear carpeta si no existe
+            if not isfolder(ThemeStorage.FolderName) then
+                makefolder(ThemeStorage.FolderName)
+            end
+            
+            local data = {
+                CurrentTheme = themeName,
+                SavedAt = os.date("%c"),
+                Version = "1.0"
+            }
+            
+            local encoded = game:GetService("HttpService"):JSONEncode(data)
+            local filePath = ThemeStorage.FolderName .. "/" .. ThemeStorage.FileName
+            writefile(filePath, encoded)
+            
+            print("💾 Tema guardado automáticamente: " .. themeName)
+        end
+    end)
+    
+    if not success then
+        warn("⚠️ Error al guardar el tema: " .. themeName)
+    end
+end
+
+-- Variable global para el tema actual
+CurrentTheme = loadSavedTheme()
+
+-- Guardar tema actual en la librería para que Notify pueda leerlo
+JmodsLib.Theme = {
+    Base = Color3.fromRGB(25,25,35),
+    Accent = Color3.fromRGB(70,70,120),
+    Input = Color3.fromRGB(50,50,80)
+}
+
+-- SISTEMA MEJORADO DE APLICACIÓN DE TEMAS
+local ThemeConfigs = {
+    ["Azul"] = {Color3.fromRGB(20,30,60), Color3.fromRGB(70,90,160), Color3.fromRGB(50,70,110)},
+    ["black"] = {Color3.fromRGB(0,0,0), Color3.fromRGB(20,20,20), Color3.fromRGB(30,30,30)},
+    ["dark"] = {Color3.fromRGB(25,25,35), Color3.fromRGB(70,70,120), Color3.fromRGB(50,50,80)},
+    ["red"] = {Color3.fromRGB(60,20,20), Color3.fromRGB(150,60,60), Color3.fromRGB(90,40,40)},
+    ["green"] = {Color3.fromRGB(20,60,30), Color3.fromRGB(60,140,80), Color3.fromRGB(40,100,50)},
+    ["purple"] = {Color3.fromRGB(40,20,60), Color3.fromRGB(120,60,160), Color3.fromRGB(70,40,90)},
+    ["orange"] = {Color3.fromRGB(60,35,10), Color3.fromRGB(200,120,60), Color3.fromRGB(120,70,30)},
+    ["pink"] = {Color3.fromRGB(60,20,40), Color3.fromRGB(200,80,140), Color3.fromRGB(100,40,80)},
+    ["gray"] = {Color3.fromRGB(40,40,40), Color3.fromRGB(150,150,150), Color3.fromRGB(100,100,100)},
+    ["cyan"] = {Color3.fromRGB(20,50,60), Color3.fromRGB(60,200,220), Color3.fromRGB(40,120,140)},
+    ["yellow"] = {Color3.fromRGB(60,60,20), Color3.fromRGB(230,200,60), Color3.fromRGB(150,130,30)},
+    ["turquoise"] = {Color3.fromRGB(20,60,60), Color3.fromRGB(80,220,200), Color3.fromRGB(50,150,140)},
+    ["brown"] = {Color3.fromRGB(60,40,20), Color3.fromRGB(140,90,50), Color3.fromRGB(100,70,40)},
+    ["gold"] = {Color3.fromRGB(35,28,20), Color3.fromRGB(220,180,60), Color3.fromRGB(180,150,50)},
+    ["silver"] = {Color3.fromRGB(28,28,34), Color3.fromRGB(200,200,210), Color3.fromRGB(160,160,170)},
+    ["neon"] = {Color3.fromRGB(10,10,12), Color3.fromRGB(0,230,160), Color3.fromRGB(0,180,120)},
+    ["dark_neon"] = {Color3.fromRGB(12,12,18), Color3.fromRGB(140,40,200), Color3.fromRGB(100,30,160)},
+    ["neon_blue"] = {Color3.fromRGB(5,8,18), Color3.fromRGB(0,150,255), Color3.fromRGB(0,120,200)},
+    ["neon_red"] = {Color3.fromRGB(15,5,8), Color3.fromRGB(255,50,50), Color3.fromRGB(200,40,40)},
+    ["neon_green"] = {Color3.fromRGB(5,15,8), Color3.fromRGB(0,255,120), Color3.fromRGB(0,200,90)},
+    ["neon_yellow"] = {Color3.fromRGB(18,18,6), Color3.fromRGB(255,230,0), Color3.fromRGB(200,180,0)},
+    ["neon_pink"] = {Color3.fromRGB(18,5,15), Color3.fromRGB(255,50,200), Color3.fromRGB(200,40,160)},
+    ["neon_orange"] = {Color3.fromRGB(20,8,4), Color3.fromRGB(255,130,0), Color3.fromRGB(200,100,0)},
+    ["neon_violet"] = {Color3.fromRGB(10,4,20), Color3.fromRGB(140,80,255), Color3.fromRGB(110,60,220)},
+    ["neon_white"] = {Color3.fromRGB(15,15,15), Color3.fromRGB(230,255,255), Color3.fromRGB(200,240,240)}
+}
+
+-- Función para aplicar tema a un elemento específico
+local function applyThemeToElement(element, baseColor, accentColor, inputColor)
+    if not element or not element.Parent then return end
+    
+    -- Marcar como aplicado para evitar re-aplicaciones innecesarias
+    ThemeAppliedElements[element] = true
+    
+    pcall(function()
+        -- Botones (TextButton) -> accentColor
+        if element:IsA("TextButton") then
+            -- Si el TextButton pertenece a un dropdown (opción), usar inputColor en lugar de accentColor
+            local parentName = (element.Parent and element.Parent.Name) or ""
+            local grandParentName = (element.Parent and element.Parent.Parent and element.Parent.Parent.Name) or ""
+            local function isDropdownOption(el)
+                if not el then return false end
+                if el.Parent and (el.Parent.Name == "DropdownList" or el.Parent.Name == "ListFrame") then return true end
+                if el.Parent and el.Parent.Parent and el.Parent.Parent.Name == "DropdownFrame" then return true end
+                return false
+            end
+            if isDropdownOption(element) or parentName == "DropdownList" or parentName == "ListFrame" or grandParentName == "DropdownFrame" then
+                element.BackgroundColor3 = inputColor
+            else
+                element.BackgroundColor3 = accentColor
+                -- Asegurar texto blanco para mejor contraste en tabs
+                if element.Parent and element.Parent.Name == "TabsHolder" then
+                    element.TextColor3 = Color3.fromRGB(255,255,255)
+                end
+            end
+
+        elseif element:IsA("TextBox") then
+            element.BackgroundColor3 = inputColor
+            
+        -- ImageButton (ej. DropButton) -> aplicar accentColor y asegurar que las ImageLabel internas se pinten para contraste
+        elseif element:IsA("ImageButton") then
+            pcall(function()
+                -- Si es el botón circular del dropdown, usar accentColor
+                element.BackgroundColor3 = accentColor
+                for _, child in ipairs(element:GetChildren()) do
+                    if child:IsA("ImageLabel") then
+                        child.ImageColor3 = Color3.fromRGB(255,255,255)
+                    end
+                end
+            end)
+
+        -- ImageLabel (ej. flecha) -> forzar color de la imagen
+        elseif element:IsA("ImageLabel") then
+            pcall(function() element.ImageColor3 = Color3.fromRGB(255,255,255) end)
+
+        -- Frames con nombres específicos
+        elseif element:IsA("Frame") then
+            -- Manejo específico: listas desplegables (Dropdown list frames)
+            if element.Name == "DropdownList" or element.Name == "ListFrame" or (element.Parent and element.Parent.Name == "DropdownFrame") then
+                element.BackgroundColor3 = baseColor
+            end
+            if element.Name == "DropdownFrame" then
+                element.BackgroundColor3 = inputColor
+            elseif element.Name == "SliderBack" then
+                element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.25)
+            elseif element.Name == "Fill" and element.Parent and element.Parent.Name == "SliderBack" then
+                element.BackgroundColor3 = accentColor
+            elseif element.Name == "Handle" and element.Parent and element.Parent.Name == "SliderBack" then
+                element.BackgroundColor3 = Color3.fromRGB(255,255,255)
+            elseif element.Name == "Paragraph" then
+                element.BackgroundColor3 = accentColor:Lerp(baseColor, 0.6)
+            elseif element.Name == "Slider" then
+                element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.14)
+            elseif element.Name == "Keybind" then
+                element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.14)
+            elseif element.Name == "ColorPicker" then
+                element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.14)
+            elseif element.Name == "ToggleFrame" then
+                element.BackgroundColor3 = baseColor
+            elseif element.Name == "SwitchBack" then
+                -- NUEVA ESTRATEGIA: No sobrescribir el estado, solo actualizar el tema global
+                -- El toggle mantendrá su propio estado a través de updateVisual()
+                -- Solo aplicar tema si no podemos determinar el estado con certeza
+                local handle = element:FindFirstChild("Handle")
+                if handle then
+                    -- Solo aplicar color inactivo si el handle está claramente en la posición izquierda
+                    local handlePosX = handle.Position.X.Scale
+                    if handlePosX <= 0.1 then -- Claramente inactivo (posición izquierda)
+                        element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.22)
+                    elseif handlePosX >= 0.8 then -- Claramente activo (posición derecha)
+                        element.BackgroundColor3 = accentColor
+                    end
+                    -- Si está en el medio, no tocar el color actual
+                else
+                    -- Si no hay handle, aplicar color inactivo por defecto
+                    element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.22)
+                end
+                
+            elseif element.Name == "Handle" and element.Parent and element.Parent.Name == "SwitchBack" then
+                -- El handle siempre debe ser blanco/gris claro
+                element.BackgroundColor3 = Color3.fromRGB(230,230,230)
+            elseif element.Name == "MainFrame" or element.Name == "Pages" then
+                element.BackgroundColor3 = baseColor
+            elseif element.Name == "TabsHolder" then
+                element.BackgroundColor3 = Color3.new(
+                    math.max(0, baseColor.R - 0.05),
+                    math.max(0, baseColor.G - 0.05), 
+                    math.max(0, baseColor.B - 0.05)
+                )
+            -- NUEVA REGLA: TitleBar debe usar accentColor
+            elseif element.Name == "TitleBar" then
+                element.BackgroundColor3 = accentColor
+            end
+            
+        -- Secciones (TextLabel con Name "Section")
+        elseif element:IsA("TextLabel") and element.Name == "Section" then
+            element.BackgroundColor3 = baseColor:Lerp(accentColor, 0.12)
+            element.TextColor3 = Color3.fromRGB(245,245,245)
+        end
+    end)
+end
+
+-- Función para aplicar tema a todos los descendientes de un objeto
+local function applyThemeToDescendants(parent, baseColor, accentColor, inputColor)
+    if not parent then return end
+    
+    -- Aplicar tema al elemento padre
+    applyThemeToElement(parent, baseColor, accentColor, inputColor)
+    
+    -- Aplicar tema a todos los descendientes
+    for _, descendant in ipairs(parent:GetDescendants()) do
+        applyThemeToElement(descendant, baseColor, accentColor, inputColor)
+    end
+end
+
+-- NUEVA FUNCIÓN: Aplicar tema a tabs específicamente
+local function applyThemeToTabs(baseColor, accentColor, inputColor)
+    local coreGui = game:GetService("CoreGui")
+    
+    for _, gui in ipairs(coreGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local mainFrame = gui:FindFirstChild("MainFrame")
+            if mainFrame then
+                local tabsHolder = mainFrame:FindFirstChild("TabsHolder")
+                if tabsHolder then
+                    -- Aplicar color más oscuro al TabsHolder
+                    pcall(function()
+                        tabsHolder.BackgroundColor3 = Color3.new(
+                            math.max(0, baseColor.R - 0.05),
+                            math.max(0, baseColor.G - 0.05), 
+                            math.max(0, baseColor.B - 0.05)
+                        )
+                    end)
+                    
+                    -- Aplicar accentColor a todos los tabs (TextButton)
+                    for _, tab in ipairs(tabsHolder:GetChildren()) do
+                        if tab:IsA("TextButton") then
+                            pcall(function()
+                                tab.BackgroundColor3 = accentColor
+                                tab.TextColor3 = Color3.fromRGB(255,255,255)
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Función principal para aplicar colores diferenciados (MEJORADA)
+local function applyColorsSmooth(baseColor, accentColor, inputColor)
+    -- Actualizar tema global
+    JmodsLib.Theme = { Base = baseColor, Accent = accentColor, Input = inputColor }
+    
+    -- ACTUALIZAR TITLEBAR GLOBAL DIRECTAMENTE
+    if GlobalTitleBar and GlobalTitleBar.Parent then
+        pcall(function()
+            GlobalTitleBar.BackgroundColor3 = accentColor
+        end)
+    end
+    
+    -- Buscar elementos por nombre específico
+    local coreGui = game:GetService("CoreGui")
+    
+    -- Buscar MainFrame y aplicar colores como en el original
+    for _, gui in ipairs(coreGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            local mainFrame = gui:FindFirstChild("MainFrame")
+            if mainFrame then
+                
+                -- Aplicar a MainFrame
+                pcall(function() mainFrame.BackgroundColor3 = baseColor end)
+                
+                -- Buscar y aplicar accentColor al TITLEBAR ESPECÍFICAMENTE
+                for _, child in ipairs(mainFrame:GetChildren()) do
+                    if child:IsA("Frame") and child.Size == UDim2.new(1, 0, 0, 42) then
+                        -- Este es el TitleBar
+                        pcall(function() child.BackgroundColor3 = accentColor end)
+                        break
+                    end
+                end
+                
+                -- APLICAR TEMA A TABS ESPECÍFICAMENTE
+
+-- >>> FIX: Asegurar que los botones de cambio de tema también cambien de color
+local coreGui = game:GetService("CoreGui")
+for _, gui in ipairs(coreGui:GetChildren()) do
+    if gui:IsA("ScreenGui") then
+        local themeFrame = gui:FindFirstChild("Frame")
+        if themeFrame and themeFrame.Size == UDim2.new(0,220,0,200) then
+            local themeScroll = themeFrame:FindFirstChild("ScrollingFrame")
+            if themeScroll then
+                for _, btn in ipairs(themeScroll:GetChildren()) do
+                    if btn:IsA("TextButton") then
+                        pcall(function()
+                            btn.BackgroundColor3 = accentColor
+                            btn.TextColor3 = Color3.fromRGB(255,255,255)
+                            -- Mantener la marca ✓ en el tema activo
+                            local cleanText = btn.Text:gsub("✓ ","")
+                            if cleanText == CurrentTheme or cleanText:lower():find(CurrentTheme:lower()) then
+                                btn.Text = "✓ " .. cleanText
+                            else
+                                btn.Text = cleanText
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end
+-- <<< FIN FIX
+                applyThemeToTabs(baseColor, accentColor, inputColor)
+                
+                -- Buscar Pages
+                local pages = mainFrame:FindFirstChild("Pages")
+                if pages then
+                    pcall(function() pages.BackgroundColor3 = baseColor end)
+                end
+                
+                -- Aplicar a FloatingButton si existe
+                local floatingButton = gui:FindFirstChild("TextButton")
+                if floatingButton and floatingButton.Size == UDim2.new(0, 120, 0, 30) then
+                    pcall(function() floatingButton.BackgroundColor3 = baseColor end)
+                end
+                
+                -- Buscar ThemeFrame
+                for _, child in ipairs(gui:GetChildren()) do
+                    if child:IsA("Frame") and child.Size == UDim2.new(0, 220, 0, 200) then
+                        pcall(function() child.BackgroundColor3 = baseColor end)
+                    end
+                end
+                
+                -- Recorrer TODOS los descendientes y aplicar reglas como en el original
+                for _, obj in ipairs(mainFrame:GetDescendants()) do
+                    pcall(function()
+                        -- >>> Manejo explícito del Dropdown (frame + botón + flecha)
+                        if obj:IsA("Frame") and obj.Name == "DropdownFrame" then
+                            pcall(function() obj.BackgroundColor3 = inputColor end)
+                        end
+                        if obj:IsA("ImageButton") and (obj.Name == "DropdownButtonCircle" or (obj.Parent and obj.Parent.Name == "DropdownFrame")) then
+                            pcall(function()
+                                obj.BackgroundColor3 = accentColor
+                                for _, c in ipairs(obj:GetChildren()) do
+                                    if c:IsA("ImageLabel") then
+                                        c.ImageColor3 = Color3.fromRGB(255,255,255)
+                                    end
+                                end
+                            end)
+                        end
+                        if obj:IsA("ImageLabel") and (obj.Name == "Arrow" or (obj.Parent and (obj.Parent.Name == "DropdownButtonCircle" or obj.Parent.Name == "DropdownFrame"))) then
+                            pcall(function() obj.ImageColor3 = Color3.fromRGB(255,255,255) end)
+                        end
+                        -- <<< Fin manejo Dropdown
+
+-- >>> FIX ADICIONAL: asegurar que las listas desplegables y sus opciones se actualicen correctamente
+if obj:IsA("Frame") and (obj.Name == "DropdownList" or obj.Name == "ListFrame" or (obj.Parent and obj.Parent.Name == "DropdownFrame")) then
+    pcall(function() obj.BackgroundColor3 = baseColor end)
+end
+if obj:IsA("TextButton") and (obj.Parent and (obj.Parent.Name == "DropdownList" or obj.Parent.Name == "ListFrame" or (obj.Parent.Parent and obj.Parent.Parent.Name == "DropdownFrame"))) then
+    pcall(function() obj.BackgroundColor3 = inputColor end)
+end
+-- <<< FIN FIX Dropdown
+
+
+                        -- Botones (TextButton) -> accentColor
+                        if obj:IsA("TextButton") then
+                            -- TODOS los TextButton usan accentColor (incluyendo tabs)
+                            obj.BackgroundColor3 = accentColor
+                            if obj.Parent and obj.Parent.Name == "TabsHolder" then
+                                -- Los tabs mantienen el accentColor pero con texto específico
+                                obj.TextColor3 = Color3.fromRGB(255,255,255)
+                            end
+
+                        -- Inputs (TextBox) -> inputColor
+                        elseif obj:IsA("TextBox") then
+                            obj.BackgroundColor3 = inputColor
+
+                        -- Sliders identificados por nombre SliderBack
+                        elseif obj:IsA("Frame") and obj.Name == "SliderBack" then
+                            obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.25)
+                            for _, sub in ipairs(obj:GetChildren()) do
+                                if sub:IsA("Frame") and sub.Name == "Fill" then
+                                    sub.BackgroundColor3 = accentColor
+                                elseif sub:IsA("Frame") and sub.Name == "Handle" then
+                                    sub.BackgroundColor3 = Color3.fromRGB(255,255,255)
+                                end
+                            end
+
+                        -- Secciones (Section) -> baseColor más opaco con toque de accent
+                        elseif obj:IsA("TextLabel") and obj.Name == "Section" then
+                            obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.12)
+                            obj.TextColor3 = Color3.fromRGB(245,245,245)
+
+                        -- Párrafos (Frame con Name Paragraph) -> usar color opaco del tema
+                        elseif obj:IsA("Frame") and obj.Name == "Paragraph" then
+                            obj.BackgroundColor3 = accentColor:Lerp(baseColor, 0.6)
+                            for _, child in ipairs(obj:GetChildren()) do
+                                if child:IsA("TextLabel") then
+                                    child.TextColor3 = Color3.fromRGB(255,255,255)
+                                end
+                            end
+
+                        -- Sliders
+                        elseif obj:IsA("Frame") and obj.Name == "Slider" then
+                            obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.14)
+                            for _, child in ipairs(obj:GetChildren()) do
+                                if child:IsA("TextLabel") then
+                                    child.TextColor3 = Color3.fromRGB(245,245,245)
+                                end
+                            end
+
+                        -- Keybinds
+                        elseif obj:IsA("Frame") and obj.Name == "Keybind" then
+                            obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.14)
+                            for _, child in ipairs(obj:GetChildren()) do
+                                if child:IsA("TextLabel") then
+                                    child.TextColor3 = Color3.fromRGB(245,245,245)
+                                elseif child:IsA("TextButton") then
+                                    child.BackgroundColor3 = accentColor
+                                end
+                            end
+
+                        -- ColorPickers
+                        elseif obj:IsA("Frame") and obj.Name == "ColorPicker" then
+                            obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.14)
+
+                        -- Toggles (ToggleFrame -> SwitchBack y Handle)
+                        elseif obj:IsA("Frame") and obj.Name == "ToggleFrame" then
+                            obj.BackgroundColor3 = baseColor
+                            for _, sub in ipairs(obj:GetChildren()) do
+                                if sub:IsA("Frame") and sub.Name == "SwitchBack" then
+                                    -- MISMA ESTRATEGIA SIMPLIFICADA: No sobrescribir estado, solo aplicar donde sea evidente
+                                    local handle = sub:FindFirstChild("Handle")
+                                    if handle then
+                                        local handlePosX = handle.Position.X.Scale
+                                        if handlePosX <= 0.1 then -- Claramente inactivo
+                                            sub.BackgroundColor3 = baseColor:Lerp(accentColor, 0.22)
+                                        elseif handlePosX >= 0.8 then -- Claramente activo
+                                            sub.BackgroundColor3 = accentColor
+                                        end
+                                        -- Si está en el medio, no tocar el color actual
+                                    else
+                                        sub.BackgroundColor3 = baseColor:Lerp(accentColor, 0.22)
+                                    end
+                                    
+                                    for _, handle in ipairs(sub:GetChildren()) do
+                                        if handle:IsA("Frame") and handle.Name == "Handle" then
+                                            handle.BackgroundColor3 = Color3.fromRGB(230,230,230)
+                                        end
+                                    end
+                                end
+                            end
+
+                        -- Alternativamente, si hay SwitchBack suelto (por compatibilidad)
+                        elseif obj:IsA("Frame") and obj.Name == "SwitchBack" then
+                            -- MISMA ESTRATEGIA SIMPLIFICADA
+                            local handle = obj:FindFirstChild("Handle")
+                            if handle then
+                                local handlePosX = handle.Position.X.Scale
+                                if handlePosX <= 0.1 then -- Claramente inactivo
+                                    obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.22)
+                                elseif handlePosX >= 0.8 then -- Claramente activo
+                                    obj.BackgroundColor3 = accentColor
+                                end
+                                -- Si está en el medio, no tocar el color actual
+                            else
+                                obj.BackgroundColor3 = baseColor:Lerp(accentColor, 0.22)
+                            end
+                            
+                            for _, handle in ipairs(obj:GetChildren()) do
+                                if handle:IsA("Frame") and handle.Name == "Handle" then
+                                    handle.BackgroundColor3 = Color3.fromRGB(230,230,230)
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    -- Actualizar notificaciones existentes para que reflejen el nuevo tema
+    pcall(function()
+        local notifyGui = coreGui:FindFirstChild("JmodsLibNotify")
+        if notifyGui then
+            for _, notif in ipairs(notifyGui:GetChildren()) do
+                if notif:IsA("Frame") then
+                    -- Usar accentColor para el fondo de la notificación (consistente con botones)
+                    notif.BackgroundColor3 = accentColor
+                    -- Intentar actualizar labels nombrados Title / Content si existen
+                    local titleLbl = notif:FindFirstChild("Title")
+                    local contentLbl = notif:FindFirstChild("Content")
+                    if titleLbl and titleLbl:IsA("TextLabel") then
+                        titleLbl.TextColor3 = Color3.fromRGB(255,255,255)
+                    else
+                        -- fallback: cualquiera TextLabel dentro de la notificación
+                        for _, d in ipairs(notif:GetDescendants()) do
+                            if d:IsA("TextLabel") then
+                                d.TextColor3 = Color3.fromRGB(255,255,255)
+                            end
+                        end
+                    end
+                    if contentLbl and contentLbl:IsA("TextLabel") then
+                        contentLbl.TextColor3 = Color3.fromRGB(255,255,255)
+                    end
+                end
+            end
+        end
+    end)
+    
+    -- Marcar que no hay aplicación pendiente
+    PendingThemeApplication = false
+end
+
+-- Función para registrar un elemento para aplicación automática de temas
+local function registerElementForTheme(element)
+    if not element then return end
+    
+    -- Evitar duplicados
+    for _, registered in ipairs(ElementsToTheme) do
+        if registered == element then return end
+    end
+    
+    table.insert(ElementsToTheme, element)
+    
+    -- Aplicar tema inmediatamente si ya tenemos un tema configurado
+    if CurrentTheme and ThemeConfigs[CurrentTheme] then
+        local config = ThemeConfigs[CurrentTheme]
+        applyThemeToDescendants(element, config[1], config[2], config[3])
+    end
+end
+
+-- Función para registrar un observador de cambios de tema
+local function registerThemeObserver(callback)
+    table.insert(ThemeObservers, callback)
+end
+
+-- NUEVA FUNCIÓN: Aplicar tema pendiente
+local function applyPendingTheme()
+    if PendingThemeApplication and CurrentTheme and ThemeConfigs[CurrentTheme] then
+        local config = ThemeConfigs[CurrentTheme]
+        spawn(function()
+            wait(0.1) -- Pequeño delay para asegurar que todos los elementos estén renderizados
+            applyColorsSmooth(config[1], config[2], config[3])
+        end)
+    end
+end
+
+-- Crear Intro Animada (Opcional)
+function JmodsLib:CreateIntro(options)
+    options = options or {}
+    local imageId = options.Image or options.Icon or 128308831323216
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.Name = "JmodsLibIntro"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Fondo completamente transparente (sin fondo negro)
+    local Background = Instance.new("Frame", ScreenGui)
+    Background.Size = UDim2.new(1, 0, 1, 0)
+    Background.Position = UDim2.new(0, 0, 0, 0)
+    Background.BackgroundTransparency = 1 -- Completamente transparente
+    Background.BorderSizePixel = 0
+    Background.ZIndex = 100
+
+    -- Frame principal de la intro
+    local IntroFrame = Instance.new("Frame", ScreenGui)
+    IntroFrame.Size = UDim2.new(0, 420, 0, 310)
+    IntroFrame.Position = UDim2.new(0.5, -210, 0.5, -155)
+    IntroFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    IntroFrame.BackgroundTransparency = 1
+    IntroFrame.BorderSizePixel = 0
+    IntroFrame.ZIndex = 101
+    Instance.new("UICorner", IntroFrame).CornerRadius = UDim.new(0, 16)
+
+    -- Imagen principal (grande como antes)
+    local ImageLabel = Instance.new("ImageLabel", IntroFrame)
+    ImageLabel.Size = UDim2.new(0, 120, 0, 120)
+    ImageLabel.Position = UDim2.new(0.5, -60, 0, 30)
+    ImageLabel.BackgroundTransparency = 1
+    ImageLabel.Image = "rbxassetid://" .. tostring(imageId)
+    ImageLabel.ImageTransparency = 1
+    ImageLabel.ZIndex = 102
+    Instance.new("UICorner", ImageLabel).CornerRadius = UDim.new(0, 12)
+
+    -- Título
+    local Title = Instance.new("TextLabel", IntroFrame)
+    Title.Size = UDim2.new(1, -20, 0, 40)
+    Title.Position = UDim2.new(0, 10, 0, 160)
+    Title.Text = options.Title or options.Name or "JmodsLib"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 26
+    Title.BackgroundTransparency = 1
+    Title.TextTransparency = 1
+    Title.ZIndex = 102
+
+    -- Subtítulo
+    local Subtitle = Instance.new("TextLabel", IntroFrame)
+    Subtitle.Size = UDim2.new(1, -20, 0, 30)
+    Subtitle.Position = UDim2.new(0, 10, 0, 205)
+    Subtitle.Text = options.LoadingSubtitle or options.Subtitle or "Cargando interfaz..."
+    Subtitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Subtitle.Font = Enum.Font.Gotham
+    Subtitle.TextSize = 16
+    Subtitle.BackgroundTransparency = 1
+    Subtitle.TextTransparency = 1
+    Subtitle.ZIndex = 102
+
+    -- Barra de progreso
+    local ProgressBack = Instance.new("Frame", IntroFrame)
+    ProgressBack.Size = UDim2.new(0.8, 0, 0, 6)
+    ProgressBack.Position = UDim2.new(0.1, 0, 0, 260)
+    ProgressBack.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+    ProgressBack.BorderSizePixel = 0
+    ProgressBack.BackgroundTransparency = 1
+    ProgressBack.ZIndex = 102
+    Instance.new("UICorner", ProgressBack).CornerRadius = UDim.new(1, 0)
+
+    local ProgressFill = Instance.new("Frame", ProgressBack)
+    ProgressFill.Size = UDim2.new(0, 0, 1, 0)
+    ProgressFill.BackgroundColor3 = Color3.fromRGB(120, 160, 255)
+    ProgressFill.BorderSizePixel = 0
+    ProgressFill.ZIndex = 103
+    Instance.new("UICorner", ProgressFill).CornerRadius = UDim.new(1, 0)
+
+    local TweenService = game:GetService("TweenService")
+
+    -- Animaciones de entrada
+    local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+
+    -- Animar frame principal
+    IntroFrame.Position = UDim2.new(0.5, -210, 0.5, -185)
+    IntroFrame.Size = UDim2.new(0, 360, 0, 260)
+
+    local frameEnter = TweenService:Create(IntroFrame, tweenInfo, {
+        Position = UDim2.new(0.5, -210, 0.5, -155),
+        Size = UDim2.new(0, 420, 0, 310)
+    })
+
+    -- Animar imagen
+    local imageEnter = TweenService:Create(ImageLabel, tweenInfo, {
+        ImageTransparency = 0
+    })
+
+    -- Animar textos
+    local titleEnter = TweenService:Create(Title, tweenInfo, {
+        TextTransparency = 0
+    })
+
+    local subtitleEnter = TweenService:Create(Subtitle, tweenInfo, {
+        TextTransparency = 0
+    })
+
+    local progressEnter = TweenService:Create(ProgressBack, tweenInfo, {
+        BackgroundTransparency = 0.0
+    })
+
+    -- Ejecutar animaciones
+    frameEnter:Play()
+    wait(0.2)
+    imageEnter:Play()
+    wait(0.1)
+    titleEnter:Play()
+    wait(0.1)
+    subtitleEnter:Play()
+    wait(0.1)
+    progressEnter:Play()
+
+    -- Animar barra de progreso
+    wait(0.5)
+    local progressTween = TweenService:Create(ProgressFill, TweenInfo.new(2, Enum.EasingStyle.Sine), {
+        Size = UDim2.new(1, 0, 1, 0)
+    })
+    progressTween:Play()
+
+    -- Rotación suave de la imagen
+    spawn(function()
+        while ScreenGui.Parent do
+            local rotateTween = TweenService:Create(ImageLabel, TweenInfo.new(6, Enum.EasingStyle.Linear), {
+                Rotation = ImageLabel.Rotation + 360
+            })
+            rotateTween:Play()
+            wait(6)
+        end
+    end)
+
+    -- Esperar duración especificada
+    wait(options.Duration or 3)
+
+    -- Animaciones de salida
+    local exitTween = TweenService:Create(IntroFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    })
+
+    exitTween:Play()
+    wait(0.6)
+    ScreenGui:Destroy()
+end
+
+-- Crear ventana principal
+function JmodsLib:CreateWindow(options)
+    options = options or {}
+    
+    -- LÓGICA DE TEMAS MEJORADA SEGÚN TU ESPECIFICACIÓN
+    local specifiedTheme = nil
+    if options.Theme then
+        -- Normalizar nombres de temas (Rojo -> red, etc.)
+        local themeMap = {
+            ["negro"] = "black",
+            ["azul"] = "Azul", 
+            ["oscuro"] = "dark",
+            ["rojo"] = "red",
+            ["verde"] = "green",
+            ["morado"] = "purple",
+            ["naranja"] = "orange",
+            ["rosa"] = "pink",
+            ["gris"] = "gray",
+            ["cian"] = "cyan",
+            ["amarillo"] = "yellow"
+        }
+        specifiedTheme = themeMap[string.lower(options.Theme)] or options.Theme
+    end
+    
+    -- Detectar si hay tema guardado
+    local savedTheme = nil
+    pcall(function()
+        if readfile and isfile and isfolder then
+            local filePath = ThemeStorage.FolderName .. "/" .. ThemeStorage.FileName
+            if isfile(filePath) then
+                local data = readfile(filePath)
+                local decoded = game:GetService("HttpService"):JSONDecode(data)
+                savedTheme = decoded.CurrentTheme
+            end
+        end
+    end)
+    
+    -- LÓGICA DE PRIORIDAD EXACTA:
+    if savedTheme and ThemeConfigs[savedTheme] then
+        -- SI HAY TEMA GUARDADO: usar el guardado
+        CurrentTheme = savedTheme
+        print("Cargando tema guardado: " .. CurrentTheme)
+    elseif specifiedTheme and ThemeConfigs[specifiedTheme] then
+        -- SI NO HAY GUARDADO PERO SÍ ESPECIFICADO: usar el especificado
+        CurrentTheme = specifiedTheme
+        print("Usando tema especificado: " .. CurrentTheme)
+    else
+        -- SI NO HAY NINGUNO: usar negro por defecto
+        CurrentTheme = "black"
+        print("Usando tema por defecto: negro")
+    end
+    
+    -- Guardar el tema seleccionado
+    saveTheme(CurrentTheme)
+    
+    -- Aplicar colores basados en el tema cargado
+    local themeConfig = ThemeConfigs[CurrentTheme] or ThemeConfigs["Azul"]
+    local themeBaseColor, themeAccentColor, themeInputColor = themeConfig[1], themeConfig[2], themeConfig[3]
+    
+    -- sincronizar tema inicial con la librería global
+    JmodsLib.Theme = { Base = themeBaseColor, Accent = themeAccentColor, Input = themeInputColor }
+
+    -- Si Intro está activado, mostrar la intro primero
+    if options.Intro == true then
+        self:CreateIntro({
+            Name = options.Name,
+            Title = options.LoadingTitle or options.Name,
+            Subtitle = options.LoadingSubtitle or "Cargando interfaz...",
+            Image = options.Icon,
+            Duration = options.LoadingDuration or 3
+        })
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.Name = options.Name or "JmodsLib"
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Parent = ScreenGui
+    MainFrame.Size = UDim2.new(0, 520, 0, 360)
+    MainFrame.Position = UDim2.new(0.5, -260, 0.5, -180)
+    MainFrame.BackgroundColor3 = themeBaseColor
+    MainFrame.BackgroundTransparency = 0.05
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Name = "MainFrame"
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 14)
+
+    -- REGISTRAR EL MAINFRAME PARA TEMAS AUTOMÁTICOS
+    registerElementForTheme(MainFrame)
+
+    -- Sombra suave
+    local Shadow = Instance.new("ImageLabel", MainFrame)
+    Shadow.Size = UDim2.new(1, 40, 1, 40)
+    Shadow.Position = UDim2.new(0, -20, 0, -20)
+    Shadow.BackgroundTransparency = 1
+    Shadow.Image = "rbxassetid://5028857084"
+    Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    Shadow.ImageTransparency = 0.7
+    Shadow.ScaleType = Enum.ScaleType.Slice
+    Shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+
+    -- Barra superior con degradado
+    local TitleBar = Instance.new("Frame", MainFrame)
+    TitleBar.Name = "TitleBar" -- IMPORTANTE: Agregar Name para identificación
+    TitleBar.Size = UDim2.new(1, 0, 0, 42)
+    TitleBar.BackgroundTransparency = 0
+    TitleBar.BorderSizePixel = 0
+    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 14)
+    TitleBar.ClipsDescendants = true
+    TitleBar.BackgroundColor3 = themeAccentColor
+
+    -- GUARDAR REFERENCIA GLOBAL PARA ACTUALIZACIONES DE TEMA
+    GlobalTitleBar = TitleBar
+
+    -- REGISTRAR TITLEBAR PARA TEMAS AUTOMÁTICOS
+    registerElementForTheme(TitleBar)
+
+    -- Icono pequeño en la barra de título (solo si se especifica)
+    local TitleIcon = nil
+    if options.Icon then
+        TitleIcon = Instance.new("ImageLabel", TitleBar)
+        TitleIcon.Size = UDim2.new(0, 28, 0, 28)
+        TitleIcon.Position = UDim2.new(0, 10, 0, 7)
+        TitleIcon.BackgroundTransparency = 1
+        TitleIcon.Image = "rbxassetid://" .. tostring(options.Icon)
+        TitleIcon.ZIndex = TitleBar.ZIndex + 1
+        Instance.new("UICorner", TitleIcon).CornerRadius = UDim.new(0, 6)
+    end
+
+    -- Título (ajustado si hay ícono)
+    local Title = Instance.new("TextLabel", TitleBar)
+    if TitleIcon then
+        Title.Size = UDim2.new(1, -140, 1, 0)
+        Title.Position = UDim2.new(0, 46, 0, 0) -- Espacio para el ícono
+    else
+        Title.Size = UDim2.new(1, -100, 1, 0)
+        Title.Position = UDim2.new(0, 16, 0, 0)
+    end
+    Title.Text = options.Name or "JmodsLib"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 20
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.BackgroundTransparency = 1
+
+    -- Botón cerrar
+    local CloseButton = Instance.new("ImageButton", TitleBar)
+    CloseButton.Size = UDim2.new(0, 40, 1, 0)
+    CloseButton.Position = UDim2.new(1, -40, 0, 0)
+    CloseButton.BackgroundTransparency = 1
+    CloseButton.Image = "rbxassetid://116517620289213"
+    CloseButton.MouseButton1Click:Connect(function()
+        -- Guardar tema antes de cerrar
+        saveTheme(CurrentTheme)
+        ScreenGui:Destroy()
+    end)
+
+    -- Botón minimizar
+    local MinButton = Instance.new("ImageButton", TitleBar)
+    MinButton.Size = UDim2.new(0, 40, 1, 0)
+    MinButton.Position = UDim2.new(1, -80, 0, 0)
+    MinButton.BackgroundTransparency = 1
+    MinButton.Image = "rbxassetid://130153814089483"
+
+    local minimized = false
+    local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
+    local restoreKey = Enum.KeyCode.K -- Key por defecto
+
+    -- Botón flotante para móvil (arriba, centrado)
+    local FloatingButton = Instance.new("TextButton")
+    FloatingButton.Size = UDim2.new(0, 120, 0, 30)
+    FloatingButton.Position = UDim2.new(0.5, -60, 0, 5)
+    FloatingButton.AnchorPoint = Vector2.new(0, 0)
+    FloatingButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    FloatingButton.BackgroundTransparency = 0.4
+    FloatingButton.Text = options.Name or "UI"
+    FloatingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FloatingButton.Font = Enum.Font.GothamBold
+    FloatingButton.TextSize = 14
+    FloatingButton.Visible = false
+    Instance.new("UICorner", FloatingButton).CornerRadius = UDim.new(0, 12)
+    FloatingButton.Parent = ScreenGui
+
+    -- REGISTRAR FLOATING BUTTON PARA TEMAS
+    registerElementForTheme(FloatingButton)
+
+    -- Botón para cambiar el bind (al lado del minimizar)
+    local BindButton = Instance.new("TextButton", TitleBar)
+    BindButton.Size = UDim2.new(0, 28, 0, 28)
+    BindButton.Position = UDim2.new(1, -120, 0, 7)
+    BindButton.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+    BindButton.Text = "K"
+    BindButton.TextColor3 = Color3.fromRGB(255,255,255)
+    BindButton.Font = Enum.Font.GothamBold
+    BindButton.TextSize = 14
+    Instance.new("UICorner", BindButton).CornerRadius = UDim.new(0, 8)
+
+    -- Botón para abrir el menú de temas
+-- Botón para abrir el menú de temas (con imagen)
+local ThemeButton = Instance.new("ImageButton", TitleBar)
+ThemeButton.Size = UDim2.new(0, 28, 0, 28)
+ThemeButton.Position = UDim2.new(1, -160, 0, 7)
+ThemeButton.BackgroundTransparency = 1
+ThemeButton.Image = "rbxassetid://118905585023296"
+ThemeButton.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+Instance.new("UICorner", ThemeButton).CornerRadius = UDim.new(0, 8)
+
+    -- Ventana flotante con los botones de temas
+    local ThemeFrame = Instance.new("Frame", ScreenGui)
+    ThemeFrame.Size = UDim2.new(0, 220, 0, 200)
+    ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y)
+    ThemeFrame.BackgroundColor3 = themeBaseColor
+    ThemeFrame.BorderSizePixel = 0
+    ThemeFrame.Visible = false
+    Instance.new("UICorner", ThemeFrame).CornerRadius = UDim.new(0, 10)
+
+    -- REGISTRAR THEME FRAME PARA TEMAS
+    registerElementForTheme(ThemeFrame)
+
+    local ThemeTitle = Instance.new("TextLabel", ThemeFrame)
+    ThemeTitle.Size = UDim2.new(1, -12, 0, 24)
+    ThemeTitle.Position = UDim2.new(0, 6, 0, 6)
+    ThemeTitle.Text = "Seleccionar Tema (Auto-Guardado)"
+    ThemeTitle.Font = Enum.Font.GothamBold
+    ThemeTitle.TextSize = 12
+    ThemeTitle.TextColor3 = Color3.fromRGB(240,240,240)
+    ThemeTitle.BackgroundTransparency = 1
+    ThemeTitle.TextXAlignment = Enum.TextXAlignment.Center
+
+    local ThemeScroll = Instance.new("ScrollingFrame", ThemeFrame)
+    ThemeScroll.Size = UDim2.new(1, -12, 1, -40)
+    ThemeScroll.Position = UDim2.new(0, 6, 0, 34)
+    ThemeScroll.BackgroundTransparency = 1
+    ThemeScroll.BorderSizePixel = 0
+    ThemeScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ThemeScroll.ScrollBarThickness = 4
+    ThemeScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+    local ThemeLayout = Instance.new("UIListLayout", ThemeScroll)
+    ThemeLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ThemeLayout.Padding = UDim.new(0, 6)
+
+    -- Tabs y páginas
+    local TabsHolder = Instance.new("ScrollingFrame", MainFrame)
+    TabsHolder.Name = "TabsHolder"
+    TabsHolder.Size = UDim2.new(0, 140, 1, -42)
+    TabsHolder.Position = UDim2.new(0, 0, 0, 42)
+    TabsHolder.BackgroundColor3 = Color3.new(
+        math.max(0, themeBaseColor.R - 0.05),
+        math.max(0, themeBaseColor.G - 0.05), 
+        math.max(0, themeBaseColor.B - 0.05)
+    ) -- Color más oscuro que baseColor
+    TabsHolder.BackgroundTransparency = 0.18
+    TabsHolder.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabsHolder.ScrollBarThickness = 6
+    TabsHolder.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+    local TabLayout = Instance.new("UIListLayout", TabsHolder)
+    TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    TabLayout.Padding = UDim.new(0, 6)
+
+    local Pages = Instance.new("Frame", MainFrame)
+    Pages.Name = "Pages"
+    Pages.Size = UDim2.new(1, -140, 1, -42)
+    Pages.Position = UDim2.new(0, 140, 0, 42)
+    Pages.BackgroundTransparency = 0
+    Pages.BackgroundColor3 = themeBaseColor
+
+    -- REGISTRAR TABS Y PAGES PARA TEMAS AUTOMÁTICOS
+    registerElementForTheme(TabsHolder)
+    registerElementForTheme(Pages)
+
+    -- MARCAR QUE HAY UNA APLICACIÓN DE TEMA PENDIENTE
+    PendingThemeApplication = true
+
+    -- SISTEMA DE TEMAS CON AUTO GUARDADO MEJORADO
+    local function createThemeButton(name, displayName, baseColor, accentColor, inputColor)
+        local ThemeButtonItem = Instance.new("TextButton", ThemeScroll)
+        ThemeButtonItem.Size = UDim2.new(1, -12, 0, 32)
+        ThemeButtonItem.Text = displayName
+        ThemeButtonItem.BackgroundColor3 = accentColor
+        ThemeButtonItem.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ThemeButtonItem.Font = Enum.Font.GothamBold
+        ThemeButtonItem.TextSize = 13
+        Instance.new("UICorner", ThemeButtonItem).CornerRadius = UDim.new(0, 8)
+        
+        -- REGISTRAR BOTÓN DE TEMA PARA QUE SE ACTUALICE AUTOMÁTICAMENTE
+        registerElementForTheme(ThemeButtonItem)
+        
+        -- Marcar tema actual con ✓
+        if CurrentTheme == name then
+            ThemeButtonItem.Text = "✓ " .. displayName
+        end
+        
+        ThemeButtonItem.MouseButton1Click:Connect(function()
+            CurrentTheme = name
+            applyColorsSmooth(baseColor, accentColor, inputColor)
+            saveTheme(name) -- AUTO GUARDADO
+            ThemeFrame.Visible = false
+            
+            -- Actualizar todos los botones
+            for _, btn in ipairs(ThemeScroll:GetChildren()) do
+                if btn:IsA("TextButton") then
+                    local btnText = btn.Text:gsub("✓ ", "")
+                    if CurrentTheme == name and btn == ThemeButtonItem then
+                        btn.Text = "✓ " .. btnText
+                    else
+                        btn.Text = btnText
+                    end
+                end
+            end
+            
+            -- Notificación de cambio
+            JmodsLib:Notify({
+                Title = "Tema Cambiado",
+                Content = "Tema aplicado: " .. displayName .. "\n¡Guardado automáticamente!",
+                Duration = 3
+            })
+        end)
+        
+        return ThemeButtonItem
+    end
+
+    -- Crear todos los temas disponibles
+    createThemeButton("Azul", "Tema Azul", Color3.fromRGB(20,30,60), Color3.fromRGB(70,90,160), Color3.fromRGB(50,70,110))
+    createThemeButton("black", "Tema Negro (defecto)", Color3.fromRGB(0,0,0), Color3.fromRGB(20,20,20), Color3.fromRGB(30,30,30))
+    createThemeButton("dark", "Tema Oscuro", Color3.fromRGB(25,25,35), Color3.fromRGB(70,70,120), Color3.fromRGB(50,50,80))
+    createThemeButton("red", "Tema Rojo", Color3.fromRGB(60,20,20), Color3.fromRGB(150,60,60), Color3.fromRGB(90,40,40))
+    createThemeButton("green", "Tema Verde", Color3.fromRGB(20,60,30), Color3.fromRGB(60,140,80), Color3.fromRGB(40,100,50))
+    createThemeButton("purple", "Tema Morado", Color3.fromRGB(40,20,60), Color3.fromRGB(120,60,160), Color3.fromRGB(70,40,90))
+    createThemeButton("orange", "Tema Naranja", Color3.fromRGB(60,35,10), Color3.fromRGB(200,120,60), Color3.fromRGB(120,70,30))
+    createThemeButton("pink", "Tema Rosa", Color3.fromRGB(60,20,40), Color3.fromRGB(200,80,140), Color3.fromRGB(100,40,80))
+    createThemeButton("gray", "Tema Gris", Color3.fromRGB(40,40,40), Color3.fromRGB(150,150,150), Color3.fromRGB(100,100,100))
+    createThemeButton("cyan", "Tema Cian", Color3.fromRGB(20,50,60), Color3.fromRGB(60,200,220), Color3.fromRGB(40,120,140))
+    createThemeButton("yellow", "Tema Amarillo", Color3.fromRGB(60,60,20), Color3.fromRGB(230,200,60), Color3.fromRGB(150,130,30))
+    createThemeButton("turquoise", "Tema Turquesa", Color3.fromRGB(20,60,60), Color3.fromRGB(80,220,200), Color3.fromRGB(50,150,140))
+    createThemeButton("brown", "Tema Marrón", Color3.fromRGB(60,40,20), Color3.fromRGB(140,90,50), Color3.fromRGB(100,70,40))
+    createThemeButton("gold", "Tema Dorado", Color3.fromRGB(35,28,20), Color3.fromRGB(220,180,60), Color3.fromRGB(180,150,50))
+    createThemeButton("silver", "Tema Plateado", Color3.fromRGB(28,28,34), Color3.fromRGB(200,200,210), Color3.fromRGB(160,160,170))
+    createThemeButton("neon", "Tema Neón", Color3.fromRGB(10,10,12), Color3.fromRGB(0,230,160), Color3.fromRGB(0,180,120))
+    createThemeButton("dark_neon", "Oscuro Neón", Color3.fromRGB(12,12,18), Color3.fromRGB(140,40,200), Color3.fromRGB(100,30,160))
+    createThemeButton("neon_blue", "Neón Azul", Color3.fromRGB(5,8,18), Color3.fromRGB(0,150,255), Color3.fromRGB(0,120,200))
+    createThemeButton("neon_red", "Neón Rojo", Color3.fromRGB(15,5,8), Color3.fromRGB(255,50,50), Color3.fromRGB(200,40,40))
+    createThemeButton("neon_green", "Neón Verde", Color3.fromRGB(5,15,8), Color3.fromRGB(0,255,120), Color3.fromRGB(0,200,90))
+    createThemeButton("neon_yellow", "Neón Amarillo", Color3.fromRGB(18,18,6), Color3.fromRGB(255,230,0), Color3.fromRGB(200,180,0))
+    createThemeButton("neon_pink", "Neón Rosa", Color3.fromRGB(18,5,15), Color3.fromRGB(255,50,200), Color3.fromRGB(200,40,160))
+    createThemeButton("neon_orange", "Neón Naranja", Color3.fromRGB(20,8,4), Color3.fromRGB(255,130,0), Color3.fromRGB(200,100,0))
+    createThemeButton("neon_violet", "Neón Violeta", Color3.fromRGB(10,4,20), Color3.fromRGB(140,80,255), Color3.fromRGB(110,60,220))
+    createThemeButton("neon_white", "Neón Blanco", Color3.fromRGB(15,15,15), Color3.fromRGB(230,255,255), Color3.fromRGB(200,240,240))
+
+    -- Toggle panel
+    ThemeButton.MouseButton1Click:Connect(function()
+        ThemeFrame.Visible = not ThemeFrame.Visible
+    end)
+
+    local waitingKey = false
+
+    -- Botón para redimensionar (puede ser ImageButton si options.DragImage)
+local ResizeButton
+if options.DragImage then
+    ResizeButton = Instance.new("ImageButton", MainFrame)
+    ResizeButton.Size = UDim2.new(0, 20, 0, 20)
+    ResizeButton.AnchorPoint = Vector2.new(1, 1)
+    ResizeButton.BackgroundTransparency = 1
+    ResizeButton.Image = "rbxassetid://" .. tostring(options.DragImage)
+    ResizeButton.ZIndex = 10
+    -- Opcional: redondeo si la imagen no cubre todo visualmente
+    pcall(function() Instance.new("UICorner", ResizeButton).CornerRadius = UDim.new(0, 6) end)
+else
+    ResizeButton = Instance.new("Frame", MainFrame)
+    ResizeButton.Size = UDim2.new(0, 20, 0, 20)
+    ResizeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
+    ResizeButton.BorderSizePixel = 0
+    ResizeButton.ZIndex = 10
+    Instance.new("UICorner", ResizeButton).CornerRadius = UDim.new(0, 4)
+end
+
+
+    -- Función para actualizar la posición del botón resize
+    local function updateResizePosition()
+        -- actualizar posición del ThemeFrame (pegado a la derecha con offset mayor)
+        pcall(function()
+            ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y + 4)
+        end)
+
+        ResizeButton.AnchorPoint = Vector2.new(1,1)
+        -- Alejar más (offset 12 en X,y)
+        ResizeButton.Position = UDim2.new(1, 12, 1, 12)
+    end
+
+    -- Posición inicial
+    spawn(function()
+        wait(0.1) -- Esperar a que MainFrame se renderice completamente
+        updateResizePosition()
+        -- actualizar posición del ThemeFrame (pegado a la derecha)
+        pcall(function()
+            ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y + 4)
+        end)
+    end)
+
+    local function minimizeUI()
+        minimized = true
+        MainFrame.Visible = false
+        ResizeButton.Visible = false
+        JmodsLib:Notify({
+            Title = "Interfaz minimizada",
+            Content = "Para volver a ver la interfaz presiona la tecla: " .. restoreKey.Name,
+            Duration = 6
+        })
+        if UserInputService.TouchEnabled then
+            FloatingButton.Visible = true
+        end
+        -- asegurar ThemeFrame se oculte cuando se minimice (para evitar quedarse flotando)
+        pcall(function() ThemeFrame.Visible = false end)
+    end
+
+    local function restoreUI()
+        minimized = false
+        MainFrame.Visible = true
+        ResizeButton.Visible = true
+        updateResizePosition()
+        -- actualizar posición del ThemeFrame (pegado a la derecha)
+        pcall(function()
+            ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y + 4)
+        end)
+        -- Actualizar posición al restaurar
+        FloatingButton.Visible = false
+    end
+
+    local function toggleUI()
+        if minimized then
+            restoreUI()
+        else
+            minimizeUI()
+        end
+    end
+
+    -- Acción al tocar botón minimizar
+    MinButton.MouseButton1Click:Connect(toggleUI)
+
+    -- Configurar bind dinámicamente
+    BindButton.MouseButton1Click:Connect(function()
+        BindButton.Text = "..."
+        waitingKey = true
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+
+        -- Si está esperando tecla para bind
+        if waitingKey and input.UserInputType == Enum.UserInputType.Keyboard then
+            restoreKey = input.KeyCode
+            waitingKey = false
+            BindButton.Text = restoreKey.Name
+            JmodsLib:Notify({
+                Title = "Bind cambiado",
+                Content = "Nuevo bind: " .. restoreKey.Name,
+                Duration = 4
+            })
+            return
+        end
+
+        -- Toggle con la tecla configurada
+        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == restoreKey then
+            toggleUI()
+        end
+    end)
+
+    -- Móvil: restaurar al tocar el botón flotante
+    FloatingButton.MouseButton1Click:Connect(function()
+        restoreUI()
+    end)
+
+    local resizing = false
+    local startPos, startSize
+
+    ResizeButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            resizing = true
+            startPos = input.Position
+            startSize = MainFrame.Size
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            resizing = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            local delta = input.Position - startPos
+            local newX = math.max(420, startSize.X.Offset + delta.X)
+            local newY = math.max(260, startSize.Y.Offset + delta.Y)
+            MainFrame.Size = UDim2.new(0, newX, 0, newY)
+
+            -- Actualizar posición del botón resize automáticamente
+            updateResizePosition()
+            -- actualizar posición del ThemeFrame (pegado a la derecha)
+            pcall(function()
+                ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y + 4)
+            end)
+        end
+    end)
+
+    -- Arrastrado suave compatible PC y móvil
+    local dragging, dragStart, dragPos
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            dragPos = MainFrame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            local goalMainFrame = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale, dragPos.Y.Offset + delta.Y)
+            TweenService:Create(MainFrame, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = goalMainFrame}):Play()
+            -- actualizar posición del ThemeFrame (pegado a la derecha)
+            pcall(function()
+                ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y + 4)
+            end)
+
+            -- Actualizar posición del resize button después del movimiento (con delay)
+            spawn(function()
+                wait(0.1)
+                updateResizePosition()
+                -- actualizar posición del ThemeFrame (pegado a la derecha)
+                pcall(function()
+                    ThemeFrame.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 12, 0, MainFrame.AbsolutePosition.Y + 4)
+                end)
+            end)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    local Window = {
+        MainFrame = MainFrame,
+        TabsHolder = TabsHolder,
+        Pages = Pages
+    }
+    setmetatable(Window, self)
+
+    -- APLICAR TEMA INICIAL DESPUÉS DE CREAR TODOS LOS ELEMENTOS
+    spawn(function()
+        wait(0.5) -- AUMENTAR DELAY para asegurar que todos los elementos estén completamente renderizados
+        
+        if CurrentTheme and ThemeConfigs[CurrentTheme] then
+            local config = ThemeConfigs[CurrentTheme]
+            applyColorsSmooth(config[1], config[2], config[3])
+        end
+        
+        -- Mostrar notificación de tema cargado
+        spawn(function()
+            wait(0.5)
+            JmodsLib:Notify({
+                Title = "Sistema Cargado",
+                Content = "Tema cargado: " .. CurrentTheme .. "\nAuto-guardado activado",
+                Duration = 4
+            })
+        end)
+    end)
+
+    -- Animación de entrada del ícono (si existe)
+    if TitleIcon and options.Intro then
+        TitleIcon.Size = UDim2.new(0, 0, 0, 0)
+        TitleIcon.Position = UDim2.new(0, 25, 0, 21)
+
+        wait(0.1) -- Pequeño delay después de la intro
+
+        local iconTween = TweenService:Create(TitleIcon, 
+            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 28, 0, 28),
+                Position = UDim2.new(0, 10, 0, 7)
+            }
+        )
+        iconTween:Play()
+    end
+
+    function Window:SetRestoreKey(newKey)
+        if typeof(newKey) == "EnumItem" and newKey.EnumType == Enum.KeyCode then
+            restoreKey = newKey
+            JmodsLib:Notify({
+                Title = "Jmods Universal",
+                Content = "La tecla de restaurar fue cambiada a " .. tostring(newKey.Name),
+                Duration = 4
+            })
+        end
+    end
+
+    -- Función para obtener el tema actual
+    function Window:GetCurrentTheme()
+        return CurrentTheme
+    end
+
+    -- Función para aplicar tema programáticamente
+    function Window:SetTheme(themeName)        
+        if ThemeConfigs[themeName] then
+            CurrentTheme = themeName
+            local config = ThemeConfigs[themeName]
+            applyColorsSmooth(config[1], config[2], config[3])
+            saveTheme(themeName)
+        end
+    end
+
+    return Window
+end
+
+-- CREAR TAB MEJORADO CON SISTEMA DE TEMAS AUTOMÁTICO
+function JmodsLib:CreateTab(name)
+    local TabButton = Instance.new("TextButton", self.TabsHolder)
+    TabButton.Size = UDim2.new(1, 0, 0, 36)
+    -- USAR ACCENTCOLOR PARA QUE SEA MÁS BRILLANTE
+    local currentConfig = ThemeConfigs[CurrentTheme] or ThemeConfigs["black"]
+    TabButton.BackgroundColor3 = currentConfig[2] -- accentColor
+    TabButton.Text = name
+    TabButton.Font = Enum.Font.GothamBold
+    TabButton.TextSize = 15
+    TabButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- Texto blanco para mejor contraste
+    TabButton.AutoButtonColor = false
+    Instance.new("UICorner", TabButton).CornerRadius = UDim.new(0, 8)
+
+    local Page = Instance.new("ScrollingFrame", self.Pages)
+    Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.ScrollBarThickness = 6
+    Page.BackgroundTransparency = 1
+    Page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Page.Visible = (#(self.Pages:GetChildren()) == 1)
+
+    local Layout = Instance.new("UIListLayout", Page)
+    Layout.Padding = UDim.new(0, 6)
+    Layout.FillDirection = Enum.FillDirection.Vertical
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    -- REGISTRAR ELEMENTOS PARA APLICACIÓN AUTOMÁTICA DE TEMAS
+    registerElementForTheme(TabButton)
+    registerElementForTheme(Page)
+
+    -- APLICAR TEMA PENDIENTE DESPUÉS DE CREAR EL TAB
+    spawn(function()
+        wait(0.1)
+        applyPendingTheme()
+    end)
+
+    TabButton.MouseButton1Click:Connect(function()
+        for _, p in ipairs(self.Pages:GetChildren()) do
+            if p:IsA("ScrollingFrame") then
+                p.Visible = false
+            end
+        end
+        Page.Visible = true
+    end)
+
+    local TabObj = {}
+
+    -- Section MEJORADO
+    function TabObj:CreateSection(name)
+        local Section = Instance.new("TextLabel", Page)
+        Section.Name = "Section"
+        Section.Size = UDim2.new(1, -12, 0, 28)
+        Section.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+        Section.Text = "  " .. name
+        Section.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Section.Font = Enum.Font.GothamBold
+        Section.TextSize = 15
+        Section.TextXAlignment = Enum.TextXAlignment.Left
+        Section.LayoutOrder = #(Page:GetChildren())
+        Instance.new("UICorner", Section).CornerRadius = UDim.new(0, 8)
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(Section)
+
+        return Section
+    end
+
+    -- Paragraph MEJORADO - Más compacto y mejor separado
+    function TabObj:CreateParagraph(options)
+        options = options or {}
+        local Frame = Instance.new("Frame", Page)
+        Frame.Name = "Paragraph"
+        Frame.Size = UDim2.new(1, -12, 0, 55) -- Más pequeño (era 80)
+        Frame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        Frame.LayoutOrder = #(Page:GetChildren())
+        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+
+        local Title = Instance.new("TextLabel", Frame)
+        Title.Size = UDim2.new(1, -20, 0, 18) -- Más pequeño
+        Title.Position = UDim2.new(0, 10, 0, 6)
+        Title.Text = options.Title or "Título"
+        Title.Font = Enum.Font.GothamBold
+        Title.TextSize = 14 -- Tamaño reducido
+        Title.TextColor3 = Color3.fromRGB(245, 245, 245)
+        Title.BackgroundTransparency = 1
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- LÍNEA SEPARADORA ENTRE TÍTULO Y CONTENIDO
+        local Separator = Instance.new("Frame", Frame)
+        Separator.Size = UDim2.new(1, -20, 0, 1)
+        Separator.Position = UDim2.new(0, 10, 0, 26)
+        Separator.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+        Separator.BorderSizePixel = 0
+        Separator.BackgroundTransparency = 0.4
+
+        local Content = Instance.new("TextLabel", Frame)
+        Content.Size = UDim2.new(1, -20, 0, 22) -- Más pequeño
+        Content.Position = UDim2.new(0, 10, 0, 30) -- Más abajo para dar espacio al separador
+        Content.Text = options.Content or "Contenido del párrafo..."
+        Content.Font = Enum.Font.Gotham
+        Content.TextSize = 12 -- Tamaño reducido
+        Content.TextColor3 = Color3.fromRGB(200, 200, 200) -- Un poco más tenue
+        Content.BackgroundTransparency = 1
+        Content.TextXAlignment = Enum.TextXAlignment.Left
+        Content.TextWrapped = true
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(Frame)
+
+        return Frame
+    end
+
+    -- Button MEJORADO
+    function TabObj:CreateButton(options)
+        local Button = Instance.new("TextButton", Page)
+        Button.Size = UDim2.new(1, -12, 0, 34)
+        Button.BackgroundColor3 = Color3.fromRGB(90, 90, 140)
+        Button.Text = options and options.Name or "Button"
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.Font = Enum.Font.Gotham
+        Button.TextSize = 14
+        Button.LayoutOrder = #(Page:GetChildren())
+        Button.AutoButtonColor = false
+        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 8)
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(Button)
+
+        -- hover animation: solo cambia tamaño, NO color
+        Button.MouseEnter:Connect(function()
+            pcall(function() Button:TweenSize(UDim2.new(1, -8, 0, 36), "Out", "Quad", 0.12, true) end)
+        end)
+        Button.MouseLeave:Connect(function()
+            pcall(function() Button:TweenSize(UDim2.new(1, -12, 0, 34), "Out", "Quad", 0.12, true) end)
+        end)
+
+        Button.MouseButton1Click:Connect(function()
+            if options and options.Callback then pcall(options.Callback) end
+        end)
+
+        return Button
+    end
+
+    function TabObj:CreateToggle(options)
+        options = options or {}
+        local ToggleFrame = Instance.new("Frame", Page)
+        ToggleFrame.Name = "ToggleFrame"
+        ToggleFrame.Size = UDim2.new(1, -12, 0, 40)
+        ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        ToggleFrame.LayoutOrder = #(Page:GetChildren())
+        Instance.new("UICorner", ToggleFrame).CornerRadius = UDim.new(0, 8)
+
+        local Title = Instance.new("TextLabel", ToggleFrame)
+        Title.Size = UDim2.new(0.7, 0, 1, 0)
+        Title.Position = UDim2.new(0, 10, 0, 0)
+        Title.Text = options.Name or "Toggle"
+        Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+        Title.Font = Enum.Font.Gotham
+        Title.TextSize = 14
+        Title.BackgroundTransparency = 1
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- Fondo del switch
+        local SwitchBack = Instance.new("Frame", ToggleFrame)
+        SwitchBack.Name = "SwitchBack"
+        SwitchBack.Size = UDim2.new(0, 50, 0, 20)
+        SwitchBack.Position = UDim2.new(1, -70, 0.5, -10)
+        SwitchBack.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+        SwitchBack.BorderSizePixel = 0
+        Instance.new("UICorner", SwitchBack).CornerRadius = UDim.new(0, 6)
+
+        -- Cuadrado (handle)
+        local Handle = Instance.new("Frame", SwitchBack)
+        Handle.Name = "Handle"
+        Handle.Size = UDim2.new(0, 18, 0, 18)
+        Handle.Position = UDim2.new(0, 1, 0.5, -9)
+        Handle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        Handle.BorderSizePixel = 0
+        Instance.new("UICorner", Handle).CornerRadius = UDim.new(0, 4)
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(ToggleFrame)
+
+        local state = options.CurrentValue or false
+        local TweenService = game:GetService("TweenService")
+
+        local function updateVisual()
+            local accent = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Accent) or Color3.fromRGB(0, 200, 120)
+            local base = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Base) or Color3.fromRGB(80, 80, 100)
+
+            if state then
+                pcall(function()
+                    TweenService:Create(Handle, TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = UDim2.new(1, -19, 0.5, -9)}):Play()
+                end)
+                pcall(function()
+                    if SwitchBack then
+                        TweenService:Create(SwitchBack, TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundColor3 = accent}):Play()
+                    end
+                end)
+                pcall(function()
+                    TweenService:Create(Handle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(255,255,255)}):Play()
+                end)
+            else
+                pcall(function()
+                    TweenService:Create(Handle, TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = UDim2.new(0, 1, 0.5, -9)}):Play()
+                end)
+                pcall(function()
+                    if SwitchBack then
+                        TweenService:Create(SwitchBack, TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundColor3 = base:Lerp(accent, 0.22)}):Play()
+                    end
+                end)
+                pcall(function()
+                    TweenService:Create(Handle, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(200,200,200)}):Play()
+                end)
+            end
+        end
+
+        updateVisual()
+
+        ToggleFrame.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                state = not state
+                updateVisual()
+                if options.Callback then
+                    pcall(options.Callback, state)
+                end
+            end
+        end)
+
+        return ToggleFrame
+    end
+
+    -- Slider MEJORADO
+    function TabObj:CreateSlider(options)
+        options = options or {}
+        local Frame = Instance.new("Frame", Page)
+        Frame.Name = "Slider"
+        Frame.Size = UDim2.new(1, -12, 0, 50)
+        Frame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        Frame.LayoutOrder = #(Page:GetChildren())
+        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+
+        local Title = Instance.new("TextLabel", Frame)
+        Title.Size = UDim2.new(1, 0, 0, 20)
+        Title.Text = options.Name or "Slider"
+        Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+        Title.Font = Enum.Font.Gotham
+        Title.TextSize = 14
+        Title.BackgroundTransparency = 1
+
+        local SliderBack = Instance.new("Frame", Frame)
+        SliderBack.Size = UDim2.new(1, -24, 0, 10)
+        SliderBack.Position = UDim2.new(0, 12, 0, 30)
+        SliderBack.Name = "SliderBack"
+        SliderBack.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+        SliderBack.BorderSizePixel = 0
+        Instance.new("UICorner", SliderBack).CornerRadius = UDim.new(1, 0)
+
+        local Fill = Instance.new("Frame", SliderBack)
+        Fill.Size = UDim2.new(0, 0, 1, 0)
+        Fill.BackgroundColor3 = Color3.fromRGB(120, 180, 255)
+        Fill.BorderSizePixel = 0
+        Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
+        Fill.Name = "Fill"
+
+        local Handle = Instance.new("Frame", SliderBack)
+        Handle.Size = UDim2.new(0, 12, 0, 12)
+        Handle.AnchorPoint = Vector2.new(0.5, 0.5)
+        Handle.Position = UDim2.new(0, 0, 0.5, 0)
+        Handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Handle.BorderSizePixel = 0
+        Instance.new("UICorner", Handle).CornerRadius = UDim.new(1, 0)
+        Handle.Name = "Handle"
+        Handle.ZIndex = SliderBack.ZIndex + 1
+
+        local ValueLabel = Instance.new("TextLabel", Frame)
+        ValueLabel.Size = UDim2.new(0, 60, 0, 20)
+        ValueLabel.Position = UDim2.new(1, -70, 0, 0)
+        ValueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ValueLabel.Font = Enum.Font.Gotham
+        ValueLabel.TextSize = 12
+        ValueLabel.BackgroundTransparency = 1
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(Frame)
+
+        local min = (options.Range and options.Range[1]) or 0
+        local max = (options.Range and options.Range[2]) or 100
+        local val = options.CurrentValue or min
+
+        local function setValue(newVal)
+            local increment = options.Increment or 1
+            newVal = math.clamp(newVal, min, max)
+            -- Redondear según el Increment
+            local stepped = math.floor(newVal / increment + 0.5) * increment
+            local decimals = math.max(0, -math.floor(math.log10(increment)))
+            stepped = tonumber(string.format("%." .. decimals .. "f", stepped))
+
+            val = stepped
+            local percent = (val - min) / (max - min)
+            Fill.Size = UDim2.new(percent, 0, 1, 0)
+            Handle.Position = UDim2.new(percent, 0, 0.5, 0)
+            ValueLabel.Text = tostring(val) .. " " .. (options.Suffix or "")
+            if options.Callback then pcall(options.Callback, val) end
+        end
+
+        local UIS = game:GetService("UserInputService")
+        local dragging = false
+
+        local function startDrag(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                local pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
+                local raw = min + (max - min) * pos
+                setValue(raw)
+            end
+        end
+
+        SliderBack.InputBegan:Connect(startDrag)
+        Handle.InputBegan:Connect(startDrag)
+
+        UIS.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+        end)
+
+        UIS.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                local pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
+                local raw = min + (max - min) * pos
+                setValue(raw)
+            end
+        end)
+
+        setValue(val)
+        return Frame
+    end
+
+    -- ColorPicker MEJORADO - Sin botón confirmar, cambio automático
+    function TabObj:CreateColorPicker(options)
+        options = options or {}
+        local PickerFrame = Instance.new("Frame", Page)
+        PickerFrame.Name = "ColorPicker"
+        PickerFrame.Size = UDim2.new(1, -12, 0, 70)
+        PickerFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        PickerFrame.LayoutOrder = #(Page:GetChildren())
+        Instance.new("UICorner", PickerFrame).CornerRadius = UDim.new(0, 8)
+
+        local Title = Instance.new("TextLabel", PickerFrame)
+        Title.Size = UDim2.new(1, -80, 0, 20)
+        Title.Position = UDim2.new(0, 10, 0, 6)
+        Title.Text = options.Name or "Color Picker"
+        Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+        Title.Font = Enum.Font.Gotham
+        Title.TextSize = 14
+        Title.BackgroundTransparency = 1
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+
+        local Preview = Instance.new("Frame", PickerFrame)
+        Preview.Size = UDim2.new(0, 44, 0, 44)
+        Preview.Position = UDim2.new(1, -54, 0, 10)
+        Preview.BackgroundColor3 = options.Color or options.CurrentColor or Color3.fromRGB(255, 255, 255)
+        Instance.new("UICorner", Preview).CornerRadius = UDim.new(0, 8)
+
+        local OpenButton = Instance.new("TextButton", PickerFrame)
+        OpenButton.Size = UDim2.new(1, -80, 0, 26)
+        OpenButton.Position = UDim2.new(0, 10, 0, 36)
+        OpenButton.Text = "Seleccionar color"
+        OpenButton.Font = Enum.Font.Gotham
+        OpenButton.TextSize = 13
+        OpenButton.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+        OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(0, 6)
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(PickerFrame)
+        registerElementForTheme(OpenButton)
+
+        -- CREAR POPUP FUERA DEL FRAME PRINCIPAL (como ThemeFrame)
+        local MainFrame = nil
+        local currentParent = PickerFrame.Parent
+        while currentParent and not MainFrame do
+            if currentParent.Name == "MainFrame" then
+                MainFrame = currentParent
+                break
+            end
+            currentParent = currentParent.Parent
+        end
+
+        local ScreenGui = MainFrame and MainFrame.Parent or game:GetService("CoreGui"):FindFirstChild("JmodsLib")
+        
+        local Popup = Instance.new("Frame", ScreenGui)
+        Popup.Name = "ColorPickerPopup"
+        Popup.Size = UDim2.new(0, 250, 0, 170) -- Más pequeño sin botón confirmar
+        Popup.Position = UDim2.new(0, 0, 0, 0) -- Se posicionará dinámicamente
+        Popup.BackgroundColor3 = Color3.fromRGB(35, 35, 50) -- Color base más opaco
+        Popup.Visible = false
+        Popup.Active = true
+        Popup.ZIndex = 100
+        Instance.new("UICorner", Popup).CornerRadius = UDim.new(0, 8)
+
+        -- REGISTRAR POPUP PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(Popup)
+
+        -- Función para actualizar el color del popup según el tema actual
+        local function updatePopupTheme()
+            local theme = JmodsLib.Theme or { Base = Color3.fromRGB(25,25,35), Accent = Color3.fromRGB(70,70,120), Input = Color3.fromRGB(50,50,80) }
+            -- Usar baseColor pero más opaco para mejor contraste
+            Popup.BackgroundColor3 = Color3.new(
+                math.max(0, theme.Base.R - 0.05),
+                math.max(0, theme.Base.G - 0.05), 
+                math.max(0, theme.Base.B - 0.05)
+            )
+        end
+
+        local Picker = Instance.new("ImageButton", Popup)
+        Picker.Size = UDim2.new(1, -20, 1, -20) -- Ocupa casi todo el popup
+        Picker.Position = UDim2.new(0, 10, 0, 10)
+        Picker.Image = "rbxassetid://328298876"
+        Picker.BackgroundTransparency = 1
+        Picker.ZIndex = 101
+
+        local Cursor = Instance.new("Frame", Picker)
+        Cursor.Size = UDim2.new(0, 8, 0, 8)
+        Cursor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Cursor.BorderSizePixel = 0
+        Cursor.ZIndex = 102
+        Instance.new("UICorner", Cursor).CornerRadius = UDim.new(1, 0)
+
+        local UIS = game:GetService("UserInputService")
+        local currentColor = options.Color or options.CurrentColor or Color3.fromRGB(255, 255, 255)
+
+        -- Función para posicionar el popup
+        local function positionPopup()
+            if MainFrame then
+                -- Posicionar a la derecha del MainFrame, similar al ThemeFrame
+                Popup.Position = UDim2.new(0, MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X + 15, 0, MainFrame.AbsolutePosition.Y + 50)
+            else
+                -- Fallback: centrar en pantalla
+                Popup.Position = UDim2.new(0.5, -125, 0.5, -85)
+            end
+        end
+
+        -- FUNCIÓN DE CAMBIO AUTOMÁTICO (sin botón confirmar)
+        local function updateColor(pos)
+            local relX = math.clamp((pos.X - Picker.AbsolutePosition.X) / Picker.AbsoluteSize.X, 0, 1)
+            local relY = math.clamp((pos.Y - Picker.AbsolutePosition.Y) / Picker.AbsoluteSize.Y, 0, 1)
+            Cursor.Position = UDim2.new(relX, -4, relY, -4)
+            currentColor = Color3.fromHSV(relX, 1, 1 - relY)
+            Preview.BackgroundColor3 = currentColor
+            
+            -- EJECUTAR CALLBACK AUTOMÁTICAMENTE
+            if options.Callback then
+                pcall(options.Callback, currentColor)
+            end
+        end
+
+        -- Establecer cursor inicial basado en el color predeterminado
+        spawn(function()
+            wait(0.1) -- Esperar a que el picker se renderice
+            local h, s, v = Color3.toHSV(currentColor)
+            Cursor.Position = UDim2.new(h, -4, 1 - v, -4)
+        end)
+
+        Picker.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                updateColor(input.Position)
+            end
+        end)
+
+        Picker.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                updateColor(input.Position)
+            end
+        end)
+
+        OpenButton.MouseButton1Click:Connect(function()
+            if not Popup.Visible then
+                positionPopup()
+                updatePopupTheme() -- Actualizar tema del popup antes de mostrarlo
+            end
+            Popup.Visible = not Popup.Visible
+        end)
+
+        -- Cerrar popup al hacer clic fuera de él
+        local function closeOnClickOutside(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch and Popup.Visible then
+                local mousePos = input.Position
+                local popupPos = Popup.AbsolutePosition
+                local popupSize = Popup.AbsoluteSize
+                
+                -- Verificar si el clic está fuera del popup
+                if mousePos.X < popupPos.X or mousePos.X > popupPos.X + popupSize.X or
+                   mousePos.Y < popupPos.Y or mousePos.Y > popupPos.Y + popupSize.Y then
+                    Popup.Visible = false
+                end
+            end
+        end
+
+        UIS.InputBegan:Connect(closeOnClickOutside)
+
+        return PickerFrame
+    end
+
+    -- Keybind MEJORADO
+    function TabObj:CreateKeybind(options)
+        options = options or {}
+        local KeybindFrame = Instance.new("Frame", Page)
+        KeybindFrame.Name = "Keybind"
+        KeybindFrame.Size = UDim2.new(1, -12, 0, 44)
+        KeybindFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        KeybindFrame.LayoutOrder = #(Page:GetChildren())
+        Instance.new("UICorner", KeybindFrame).CornerRadius = UDim.new(0, 8)
+
+        local Title = Instance.new("TextLabel", KeybindFrame)
+        Title.Size = UDim2.new(0.6, -10, 1, 0)
+        Title.Position = UDim2.new(0, 10, 0, 0)
+        Title.Text = options.Name or "Keybind"
+        Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+        Title.Font = Enum.Font.Gotham
+        Title.TextSize = 14
+        Title.BackgroundTransparency = 1
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+
+        local KeyButton = Instance.new("TextButton", KeybindFrame)
+        KeyButton.Size = UDim2.new(0.4, -18, 0.8, 0)
+        KeyButton.Position = UDim2.new(0.6, 8, 0.1, 0)
+        KeyButton.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+        KeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        KeyButton.Font = Enum.Font.Gotham
+        KeyButton.TextSize = 14
+        KeyButton.AutoButtonColor = false
+        Instance.new("UICorner", KeyButton).CornerRadius = UDim.new(0, 6)
+
+        -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+        registerElementForTheme(KeybindFrame)
+        registerElementForTheme(KeyButton)
+
+        local UIS = game:GetService("UserInputService")
+
+        -- Conversión automática string -> Enum.KeyCode
+        local function parseKey(k)
+            if typeof(k) == "EnumItem" then
+                return k
+            elseif typeof(k) == "string" then
+                local success, result = pcall(function()
+                    return Enum.KeyCode[k]
+                end)
+                if success and result then return result end
+            end
+            return Enum.KeyCode.Unknown
+        end
+
+        -- Acepta CurrentKey o CurrentKeybind
+        local currentKey = parseKey(options.CurrentKey or options.CurrentKeybind or Enum.KeyCode.Unknown)
+        local binding = false
+
+        local function updateText()
+            if currentKey and currentKey ~= Enum.KeyCode.Unknown then
+                KeyButton.Text = tostring(currentKey.Name)
+            else
+                KeyButton.Text = "Ninguna"
+            end
+        end
+
+        updateText()
+
+        KeyButton.MouseButton1Click:Connect(function()
+            KeyButton.Text = "Presiona una tecla..."
+            binding = true
+        end)
+
+        UIS.InputBegan:Connect(function(input, gp)
+            if gp then return end
+            if binding then
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    currentKey = input.KeyCode
+                    binding = false
+                    updateText()
+                    if options.Callback then
+                        pcall(options.Callback, currentKey)
+                    end
+                end
+            else
+                if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == currentKey then
+                    if options.Callback then
+                        pcall(options.Callback, currentKey)
+                    end
+                end
+            end
+        end)
+
+        return KeybindFrame
+    end
+
+    -- Input MEJORADO
+    function TabObj:CreateInput(options)
+    options = options or {}
+    local InputBox = Instance.new("TextBox", Page)
+    InputBox.Size = UDim2.new(1, -12, 0, 34)
+    InputBox.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InputBox.Font = Enum.Font.Gotham
+    InputBox.TextSize = 14
+    InputBox.ClearTextOnFocus = false
+    InputBox.LayoutOrder = #(Page:GetChildren())
+    Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 8)
+
+    -- Soporte PlaceholderText (nuevo) y compatibilidad con Placeholder
+    if options.PlaceholderText then
+        InputBox.PlaceholderText = tostring(options.PlaceholderText)
+    elseif options.Placeholder then
+        InputBox.PlaceholderText = tostring(options.Placeholder)
+    end
+
+    -- Texto inicial opcional (si se pasa "Text")
+    if options.Text then
+        InputBox.Text = tostring(options.Text)
+    else
+        InputBox.Text = ""
+    end
+
+    -- REGISTRAR PARA TEMAS AUTOMÁTICOS
+    registerElementForTheme(InputBox)
+
+    InputBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed and options.Callback then
+            pcall(options.Callback, InputBox.Text)
+        end
+    end)
+
+    return InputBox
+end
+
+        -- Dropdown MEJORADO (integrado siguiendo la lógica de la librería)
+        -- Dropdown MEJORADO (versión visual corregida: botón circular, título, opciones redondeadas, hover más oscuro)
+        -- Dropdown MEJORADO (totalmente integrado con temas y animación tipo botón)
+    function TabObj:CreateDropdown(options)
+        options = options or {}
+        local TweenService = game:GetService("TweenService")
+        local UIS = game:GetService("UserInputService")
+
+        -- Frame contenedor (incluye título + control desplegable)
+        local Container = Instance.new("Frame", Page)
+        Container.Size = UDim2.new(1, -12, 0, 64) -- espacio para título + control
+        Container.BackgroundTransparency = 1
+        Container.LayoutOrder = #(Page:GetChildren())
+
+        -- Título del dropdown (opcional)
+        local TitleLabel = Instance.new("TextLabel", Container)
+        TitleLabel.Size = UDim2.new(1, 0, 0, 18)
+        TitleLabel.Position = UDim2.new(0, 0, 0, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = options.Name or "Dropdown"
+        TitleLabel.TextColor3 = Color3.fromRGB(220,220,220)
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextSize = 12
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- Zona del dropdown
+        local DropdownFrame = Instance.new("Frame", Container)
+        DropdownFrame.Size = UDim2.new(1, 0, 0, 36)
+        DropdownFrame.Position = UDim2.new(0, 0, 0, 20)
+        DropdownFrame.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Input) or Color3.fromRGB(45,45,65)
+        DropdownFrame.BorderSizePixel = 0
+        DropdownFrame.Name = "DropdownFrame"
+        Instance.new("UICorner", DropdownFrame).CornerRadius = UDim.new(0, 8)
+
+        local Label = Instance.new("TextLabel", DropdownFrame)
+        Label.Size = UDim2.new(1, -44, 1, 0)
+        Label.Position = UDim2.new(0, 12, 0, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = options.Default or (options.Options and options.Options[1]) or "Selecciona"
+        Label.TextColor3 = Color3.fromRGB(240,240,240)
+        Label.Font = Enum.Font.Gotham
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- Botón circular a la derecha
+        local DropButton = Instance.new("ImageButton", DropdownFrame)
+        DropButton.Size = UDim2.new(0, 28, 0, 28)
+        DropButton.Position = UDim2.new(1, -34, 0.5, -14)
+        DropButton.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Accent) or Color3.fromRGB(90,120,255)
+        DropButton.BorderSizePixel = 0
+        DropButton.AutoButtonColor = false
+        DropButton.Name = "DropdownButtonCircle"
+        Instance.new("UICorner", DropButton).CornerRadius = UDim.new(1, 0)
+        local Arrow = Instance.new("ImageLabel", DropButton)
+        Arrow.Size = UDim2.new(0, 14, 0, 14)
+        Arrow.Position = UDim2.new(0.5, -7, 0.5, -7)
+        Arrow.BackgroundTransparency = 1
+        Arrow.Image = "rbxassetid://3926305904"
+        Arrow.ImageColor3 = Color3.fromRGB(255,255,255)
+        Arrow.ScaleType = Enum.ScaleType.Fit
+
+        -- Lista desplegable
+        local ListFrame = Instance.new("Frame", DropdownFrame)
+        ListFrame.Size = UDim2.new(1,0,0,0)
+        ListFrame.Position = UDim2.new(0,0,1,0)
+        ListFrame.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Base) or Color3.fromRGB(35,35,35)
+        ListFrame.BorderSizePixel = 0
+        ListFrame.ClipsDescendants = true
+        ListFrame.Name = "DropdownList"
+
+        local UIListLayout = Instance.new("UIListLayout", ListFrame)
+        UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        UIListLayout.Padding = UDim.new(0, 4)
+
+        local selected = Label.Text
+        local isOpen = false
+
+        local function open()
+            if isOpen then return end
+            isOpen = true
+            TweenService:Create(Arrow, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = 180}):Play()
+            local targetHeight = (#(options.Options or {})) * 34
+            TweenService:Create(ListFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1,0,0,targetHeight)
+            }):Play()
+        end
+
+        local function close()
+            if not isOpen then return end
+            isOpen = false
+            TweenService:Create(Arrow, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = 0}):Play()
+            TweenService:Create(ListFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Size = UDim2.new(1,0,0,0)
+            }):Play()
+        end
+
+        local function selectOption(text)
+            selected = text
+            Label.Text = text
+            if options.Callback then
+                pcall(function() options.Callback(text) end)
+            end
+        end
+
+        -- Crear opciones con hover tipo CreateButton (agrandado)
+        for i, opt in ipairs(options.Options or {}) do
+            local optBtn = Instance.new("TextButton", ListFrame)
+            optBtn.Size = UDim2.new(1, -12, 0, 32)
+            optBtn.Position = UDim2.new(0,6,0,(i-1)*34)
+            optBtn.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Input) or Color3.fromRGB(40,40,40)
+            optBtn.BorderSizePixel = 0
+            optBtn.Text = opt
+            optBtn.TextColor3 = Color3.fromRGB(240,240,240)
+            optBtn.Font = Enum.Font.Gotham
+            optBtn.TextSize = 14
+            optBtn.AutoButtonColor = false
+            optBtn.LayoutOrder = i
+            Instance.new("UICorner", optBtn).CornerRadius = UDim.new(0, 8)
+
+            -- Animación hover: agrandar como CreateButton
+            optBtn.MouseEnter:Connect(function()
+                pcall(function() optBtn:TweenSize(UDim2.new(1, -8, 0, 34), "Out", "Quad", 0.12, true) end)
+            end)
+            optBtn.MouseLeave:Connect(function()
+                pcall(function() optBtn:TweenSize(UDim2.new(1, -12, 0, 32), "Out", "Quad", 0.12, true) end)
+            end)
+            optBtn.MouseButton1Click:Connect(function()
+                selectOption(opt)
+                close()
+            end)
+        end
+
+        DropButton.MouseButton1Click:Connect(function()
+            if isOpen then close() else open() end
+        end)
+
+        -- Cerrar al hacer click fuera
+        UIS.InputBegan:Connect(function(input, gp)
+            if gp then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 and isOpen then
+                local mouseLoc = UIS:GetMouseLocation()
+                local absPos = Container.AbsolutePosition
+                local absSize = Container.AbsoluteSize + Vector2.new(0, ListFrame.AbsoluteSize.Y)
+                if mouseLoc.X < absPos.X or mouseLoc.X > absPos.X + absSize.X or mouseLoc.Y < absPos.Y or mouseLoc.Y > absPos.Y + absSize.Y then
+                    close()
+                end
+            end
+        end)
+
+        -- Registrar para temas automáticos
+        registerElementForTheme(Container)
+        registerElementForTheme(DropdownFrame)
+        registerElementForTheme(ListFrame)
+        registerElementForTheme(TitleLabel)
+        registerElementForTheme(DropButton)
+
+        local DropdownObj = {}
+        function DropdownObj:Set(value)
+            selectOption(value)
+        end
+        function DropdownObj:Get()
+            return selected
+        end
+
+        return DropdownObj
+    end
+    -- Dropdown MEJORADO con Scrollbar integrado
+    function TabObj:CreateDropdown(options)
+        options = options or {}
+        local TweenService = game:GetService("TweenService")
+        local UIS = game:GetService("UserInputService")
+
+        -- Contenedor principal
+        local Container = Instance.new("Frame", Page)
+        Container.Size = UDim2.new(1, -12, 0, 64)
+        Container.BackgroundTransparency = 1
+        Container.LayoutOrder = #(Page:GetChildren())
+
+        -- Título
+        local TitleLabel = Instance.new("TextLabel", Container)
+        TitleLabel.Size = UDim2.new(1, 0, 0, 18)
+        TitleLabel.Position = UDim2.new(0, 0, 0, 0)
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Text = options.Name or "Dropdown"
+        TitleLabel.TextColor3 = Color3.fromRGB(220,220,220)
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.TextSize = 12
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- Frame del Dropdown
+        local DropdownFrame = Instance.new("Frame", Container)
+        DropdownFrame.Size = UDim2.new(1, 0, 0, 36)
+        DropdownFrame.Position = UDim2.new(0, 0, 0, 20)
+        DropdownFrame.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Input) or Color3.fromRGB(45,45,65)
+        DropdownFrame.BorderSizePixel = 0
+        DropdownFrame.Name = "DropdownFrame"
+        Instance.new("UICorner", DropdownFrame).CornerRadius = UDim.new(0, 8)
+
+        local Label = Instance.new("TextLabel", DropdownFrame)
+        Label.Size = UDim2.new(1, -44, 1, 0)
+        Label.Position = UDim2.new(0, 12, 0, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = options.Default or (options.Options and options.Options[1]) or "Selecciona"
+        Label.TextColor3 = Color3.fromRGB(240,240,240)
+        Label.Font = Enum.Font.Gotham
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+
+        -- Botón circular
+        local DropButton = Instance.new("ImageButton", DropdownFrame)
+        DropButton.Size = UDim2.new(0, 28, 0, 28)
+        DropButton.Position = UDim2.new(1, -34, 0.5, -14)
+        DropButton.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Accent) or Color3.fromRGB(90,120,255)
+        DropButton.BorderSizePixel = 0
+        DropButton.AutoButtonColor = false
+        Instance.new("UICorner", DropButton).CornerRadius = UDim.new(1, 0)
+        local Arrow = Instance.new("ImageLabel", DropButton)
+        Arrow.Size = UDim2.new(0, 14, 0, 14)
+        Arrow.Position = UDim2.new(0.5, -7, 0.5, -7)
+        Arrow.BackgroundTransparency = 1
+        Arrow.Image = "rbxassetid://3926305904"
+        Arrow.ImageColor3 = Color3.fromRGB(255,255,255)
+
+        -- Lista con scrollbar
+        local ListFrame = Instance.new("Frame", DropdownFrame)
+        ListFrame.Size = UDim2.new(1,0,0,0)
+        ListFrame.Position = UDim2.new(0,0,1,0)
+        ListFrame.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Base) or Color3.fromRGB(35,35,35)
+        ListFrame.BorderSizePixel = 0
+        ListFrame.ClipsDescendants = true
+        ListFrame.ZIndex = 10
+
+        local Scroll = Instance.new("ScrollingFrame", ListFrame)
+        Scroll.Size = UDim2.new(1, -8, 1, -8)
+        Scroll.Position = UDim2.new(0, 4, 0, 4)
+        Scroll.BackgroundTransparency = 1
+        Scroll.BorderSizePixel = 0
+        Scroll.ScrollBarThickness = 6
+        Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        Scroll.CanvasSize = UDim2.new(0,0,0,0)
+        Scroll.ZIndex = 11
+
+        local UIListLayout = Instance.new("UIListLayout", Scroll)
+        UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        UIListLayout.Padding = UDim.new(0, 4)
+
+        local selected = Label.Text
+        local isOpen = false
+
+        local function open()
+            if isOpen then return end
+            isOpen = true
+            TweenService:Create(Arrow, TweenInfo.new(0.18), {Rotation = 180}):Play()
+            local targetHeight = math.min((#(options.Options or {})) * 34, 102)
+
+            TweenService:Create(ListFrame, TweenInfo.new(0.18), {
+                Size = UDim2.new(1,0,0,targetHeight)
+            }):Play()
+        end
+
+        local function close()
+            if not isOpen then return end
+            isOpen = false
+            TweenService:Create(Arrow, TweenInfo.new(0.18), {Rotation = 0}):Play()
+            TweenService:Create(ListFrame, TweenInfo.new(0.18), {
+                Size = UDim2.new(1,0,0,0)
+            }):Play()
+        end
+
+        local function selectOption(text)
+            selected = text
+            Label.Text = text
+            if options.Callback then
+                pcall(function() options.Callback(text) end)
+            end
+        end
+
+        for i, opt in ipairs(options.Options or {}) do
+            local optBtn = Instance.new("TextButton", Scroll)
+            optBtn.Size = UDim2.new(1, -6, 0, 32)
+            optBtn.BackgroundColor3 = (JmodsLib and JmodsLib.Theme and JmodsLib.Theme.Input) or Color3.fromRGB(40,40,40)
+            optBtn.BorderSizePixel = 0
+            optBtn.Text = opt
+            optBtn.TextColor3 = Color3.fromRGB(240,240,240)
+            optBtn.Font = Enum.Font.Gotham
+            optBtn.TextSize = 14
+            optBtn.AutoButtonColor = false
+            optBtn.LayoutOrder = i
+            optBtn.ZIndex = 12
+            Instance.new("UICorner", optBtn).CornerRadius = UDim.new(0, 8)
+
+            optBtn.MouseEnter:Connect(function()
+                pcall(function() optBtn:TweenSize(UDim2.new(1, -2, 0, 34), "Out", "Quad", 0.12, true) end)
+            end)
+            optBtn.MouseLeave:Connect(function()
+                pcall(function() optBtn:TweenSize(UDim2.new(1, -6, 0, 32), "Out", "Quad", 0.12, true) end)
+            end)
+            optBtn.MouseButton1Click:Connect(function()
+                selectOption(opt)
+                close()
+            end)
+        end
+
+        DropButton.MouseButton1Click:Connect(function()
+            if isOpen then close() else open() end
+        end)
+
+        UIS.InputBegan:Connect(function(input, gp)
+            if gp then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 and isOpen then
+                local mouseLoc = UIS:GetMouseLocation()
+                local absPos = Container.AbsolutePosition
+                local absSize = Container.AbsoluteSize + Vector2.new(0, ListFrame.AbsoluteSize.Y)
+                if mouseLoc.X < absPos.X or mouseLoc.X > absPos.X + absSize.X or mouseLoc.Y < absPos.Y or mouseLoc.Y > absPos.Y + absSize.Y then
+                    close()
+                end
+            end
+        end)
+
+        registerElementForTheme(Container)
+        registerElementForTheme(DropdownFrame)
+        registerElementForTheme(ListFrame)
+        registerElementForTheme(TitleLabel)
+        registerElementForTheme(DropButton)
+
+        local DropdownObj = {}
+        function DropdownObj:Set(value)
+            selectOption(value)
+        end
+        function DropdownObj:Get()
+            return selected
+        end
+
+        return DropdownObj
+    end
+
+    return TabObj
+end
+
+-- Notificaciones MEJORADAS (evitar solapamiento – se destruye la anterior antes de mostrar la nueva)
+local LastNotification = nil
+
+function JmodsLib:Notify(options)
+    options = options or {}
+    local CoreGui = game:GetService("CoreGui")
+    local ScreenGui = CoreGui:FindFirstChild("JmodsLibNotify")
+    if not ScreenGui then
+        ScreenGui = Instance.new("ScreenGui", CoreGui)
+        ScreenGui.Name = "JmodsLibNotify"
+        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    end
+
+    -- Si existe una notificación previa, eliminarla inmediatamente (evita solapamiento)
+    if LastNotification and LastNotification.Parent then
+        pcall(function()
+            -- Opcional: animar salida rápida antes de destruir
+            local TweenService = game:GetService("TweenService")
+            local endPos = UDim2.new(1, 20, LastNotification.Position.Y.Scale, LastNotification.Position.Y.Offset)
+            pcall(function()
+                TweenService:Create(LastNotification, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = endPos, BackgroundTransparency = 1}):Play()
+            end)
+            wait(0.18)
+            LastNotification:Destroy()
+        end)
+        LastNotification = nil
+    end
+
+    local theme = JmodsLib.Theme or { Base = Color3.fromRGB(25,25,35), Accent = Color3.fromRGB(70,70,120), Input = Color3.fromRGB(255,255,255) }
+
+    local Frame = Instance.new("Frame", ScreenGui)
+    Frame.Name = "NotificationFrame"
+    Frame.Size = UDim2.new(0, 300, 0, 68) -- tamaño reducido
+    Frame.Position = UDim2.new(1, -320, 0, 60)
+    Frame.BackgroundColor3 = theme.Accent or Color3.fromRGB(50, 50, 80)
+    Frame.BackgroundTransparency = 0.05
+    Frame.BorderSizePixel = 0
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+
+    -- Título
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Name = "Title"
+    Title.Size = UDim2.new(1, -16, 0, 20)
+    Title.Position = UDim2.new(0, 8, 0, 6)
+    Title.Text = options.Title or "Notificación"
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 15
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.BackgroundTransparency = 1
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Separador
+    local Separator = Instance.new("Frame", Frame)
+    Separator.Name = "Separator"
+    Separator.Size = UDim2.new(1, -16, 0, 1)
+    Separator.Position = UDim2.new(0, 8, 0, 28)
+    Separator.BackgroundColor3 = theme.Base and theme.Base:Lerp(theme.Accent, 0.22) or Color3.fromRGB(220,220,220)
+    Separator.BorderSizePixel = 0
+    Separator.BackgroundTransparency = 0.25
+
+    -- Contenido (texto en blanco para máxima legibilidad)
+    local Content = Instance.new("TextLabel", Frame)
+    Content.Name = "Content"
+    Content.Size = UDim2.new(1, -16, 1, -38)
+    Content.Position = UDim2.new(0, 8, 0, 32)
+    Content.Text = options.Content or ""
+    Content.Font = Enum.Font.Gotham
+    Content.TextSize = 13
+    Content.TextColor3 = Color3.fromRGB(255, 255, 255) -- blanco fijo
+    Content.BackgroundTransparency = 1
+    Content.TextXAlignment = Enum.TextXAlignment.Left
+    Content.TextWrapped = true
+
+    -- Guardar referencia como la última notificación activa
+    LastNotification = Frame
+
+    -- Animación simple de entrada (slide desde la derecha)
+    local TweenService = game:GetService("TweenService")
+    local startPos = Frame.Position
+    Frame.Position = UDim2.new(1, 20, startPos.Y.Scale, startPos.Y.Offset)
+    pcall(function()
+        TweenService:Create(Frame, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = startPos}):Play()
+    end)
+
+    -- Manejo de tiempo de duración y cierre
+    local duration = options.Duration or 5
+    task.spawn(function()
+        wait(duration)
+        pcall(function()
+            -- Antes de destruir, comprobar si Frame sigue siendo la última notificación
+            if LastNotification == Frame then
+                local endPos = UDim2.new(1, 20, Frame.Position.Y.Scale, Frame.Position.Y.Offset)
+                local t1 = TweenService:Create(Frame, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = endPos, BackgroundTransparency = 1})
+                t1:Play()
+                wait(0.28)
+                if Frame and Frame.Parent then Frame:Destroy() end
+                if LastNotification == Frame then LastNotification = nil end
+            else
+                -- Si ya fue reemplazada por otra notificación, asegurar destrucción en caso de que siga existiendo
+                if Frame and Frame.Parent then Frame:Destroy() end
+            end
+        end)
+        if options.Callback then pcall(options.Callback) end
+    end)
+end
+
+-- FUNCIONES ADICIONALES PARA MANEJO DE TEMAS
+
+-- Función para resetear tema al por defecto
+function JmodsLib:ResetTheme()
+    CurrentTheme = ThemeStorage.DefaultTheme
+    saveTheme(CurrentTheme)
+    
+    JmodsLib:Notify({
+        Title = "Tema Reseteado",
+        Content = "Tema reseteado a: " .. ThemeStorage.DefaultTheme .. "\n¡Reinicia el script para aplicar cambios!",
+        Duration = 4
+    })
+end
+
+-- Función para obtener información del tema actual
+function JmodsLib:GetThemeInfo()
+    return {
+        CurrentTheme = CurrentTheme,
+        DefaultTheme = ThemeStorage.DefaultTheme,
+        SavedAt = "Auto-guardado activado",
+        TotalThemes = 24 -- Total de temas disponibles
+    }
+end
+
+-- SISTEMA DE OBSERVADORES AUTOMÁTICO MEJORADO
+-- Crear un observador que detecte elementos nuevos y les aplique el tema automáticamente
+local function createAutoThemeObserver()
+    spawn(function()
+        while wait(0.5) do -- Revisar cada 0.5 segundos
+            pcall(function()
+                -- Aplicar tema a elementos nuevos registrados
+                if CurrentTheme and ThemeConfigs[CurrentTheme] then
+                    local config = ThemeConfigs[CurrentTheme]
+                    for _, element in ipairs(ElementsToTheme) do
+                        if element and element.Parent then
+                            -- Aplicar tema a elementos que no lo tengan aplicado
+                            for _, descendant in ipairs(element:GetDescendants()) do
+                                if not ThemeAppliedElements[descendant] then
+                                    applyThemeToElement(descendant, config[1], config[2], config[3])
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+-- Iniciar el observador automático
+createAutoThemeObserver()
+
+-- Guardar tema periódicamente (cada 30 segundos) como backup
+--spawn(function()
+  ---  while wait(30) do
+     ---   pcall(function()
+        ---    if CurrentTheme then
+           ---     saveTheme(CurrentTheme)
+              ---  print("💾 Auto-backup tema: " .. CurrentTheme)
+           --- end
+---        end)
+   --- end
+---end)
+
+-- Detectar cuando el jugador se va (alternativa a BindToClose)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+print("📝 Tema actual: " .. CurrentTheme)
+print("💾 Auto-guardado: ACTIVADO")
+
+return JmodsLib
