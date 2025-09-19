@@ -1,5 +1,8 @@
 ---Ediciones
----casi complto solo falta la busquedaaaaaaaaaa.
+---casi completo, falta icono de dropdown.
+---
+
+
 
 local JmodsLib = {}
 JmodsLib.__index = JmodsLib
@@ -1800,7 +1803,7 @@ function JmodsLib:CreateTab(name)
         local Picker = Instance.new("ImageButton", Popup)
         Picker.Size = UDim2.new(1, -20, 1, -20) -- Ocupa casi todo el popup
         Picker.Position = UDim2.new(0, 10, 0, 10)
-        Picker.Image = "rbxassetid://328298876"
+        Picker.Image = "rbxassetid://102473392174763" ---colorpicker imagen
         Picker.BackgroundTransparency = 1
         Picker.ZIndex = 101
 
@@ -2237,7 +2240,7 @@ end
         Arrow.Size = UDim2.new(0, 14, 0, 14)
         Arrow.Position = UDim2.new(0.5, -7, 0.5, -7)
         Arrow.BackgroundTransparency = 1
-        Arrow.Image = "rbxassetid://3926305904"
+        Arrow.Image = "rbxassetid://11552476728" ---imagen dropdown
         Arrow.ImageColor3 = Color3.fromRGB(255,255,255)
 
         -- Lista con scrollbar
