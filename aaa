@@ -1322,6 +1322,17 @@ end
         end
         
         -- Mostrar notificación de tema cargado
+--[[ 
+spawn(function()
+    wait(0.5)
+    JmodsLib:Notify({
+        Title = "Sistema Cargado",
+        Content = "Tema cargado: " .. CurrentTheme .. "\nAuto-guardado activado",
+        Duration = 4
+    })
+end)
+]]
+
     end)
 
     -- Animación de entrada del ícono (si existe)
