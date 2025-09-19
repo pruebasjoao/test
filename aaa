@@ -1849,20 +1849,20 @@ function JmodsLib:CreateTab(name)
             Cursor.Position = UDim2.new(h, -4, 1 - v, -4)
         end)
 
-        Picker.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                updateColor(input.Position)
-            end
-        end)
+-- EVENTOS CORREGIDOS
+Picker.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        updateColor(input.Position)
+    end
+end)
 
-        Picker.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-                updateColor(input.Position)
-            end
-        end)
+Picker.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        updateColor(input.Position)
+    end
+end)
 
-
--- Agregar este evento después de los anteriores
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = false
