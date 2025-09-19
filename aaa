@@ -931,7 +931,7 @@ end
     -- Botón flotante para móvil (arriba, centrado)
     local FloatingButton = Instance.new("TextButton")
     FloatingButton.Size = UDim2.new(0, 120, 0, 30)
-    FloatingButton.Position = UDim2.new(0.5, -60, 0, 5)
+    FloatingButton.Position = UDim2.new(0.5, -60, 0, -20)
     FloatingButton.AnchorPoint = Vector2.new(0, 0)
     FloatingButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
     FloatingButton.BackgroundTransparency = 0.4
