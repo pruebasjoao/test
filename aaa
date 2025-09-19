@@ -1861,6 +1861,15 @@ function JmodsLib:CreateTab(name)
             end
         end)
 
+
+-- Agregar este evento después de los anteriores
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+
         OpenButton.MouseButton1Click:Connect(function()
             if not Popup.Visible then
                 positionPopup()
