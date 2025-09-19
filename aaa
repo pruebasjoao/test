@@ -1597,7 +1597,7 @@ function JmodsLib:CreateTab(name)
 
         updateVisual()
 
-        ToggleFrame.InputBegan:Connect(function(input)
+        SwitchBack.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 state = not state
                 updateVisual()
