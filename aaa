@@ -2002,11 +2002,12 @@ function JmodsLib:CreateTab(name)
     -- REGISTRAR PARA TEMAS AUTOMÁTICOS
     registerElementForTheme(InputBox)
 
-    InputBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed and options.Callback then
-            pcall(options.Callback, InputBox.Text)
-        end
-    end)
+InputBox.FocusLost:Connect(function()
+    if options.Callback then
+        pcall(options.Callback, InputBox.Text)
+    end
+end)
+
 
     return InputBox
 end
