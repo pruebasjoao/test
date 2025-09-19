@@ -2389,7 +2389,7 @@ function JmodsLib:Notify(options)
     Frame.Size = UDim2.new(0, 300, 0, 68) -- tamaño reducido
     Frame.Position = UDim2.new(1, -320, 0, 10)
     Frame.BackgroundColor3 = theme.Accent or Color3.fromRGB(50, 50, 80)
-    Frame.BackgroundTransparency = 0.05
+    Frame.BackgroundTransparency = 0.50
     Frame.BorderSizePixel = 0
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
 
