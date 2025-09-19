@@ -2387,7 +2387,7 @@ function JmodsLib:Notify(options)
     local Frame = Instance.new("Frame", ScreenGui)
     Frame.Name = "NotificationFrame"
     Frame.Size = UDim2.new(0, 300, 0, 68) -- tamaño reducido
-    Frame.Position = UDim2.new(1, -320, 0, 10)
+    Frame.Position = UDim2.new(1, -320, 0, -20) ---posi noti
     Frame.BackgroundColor3 = theme.Accent or Color3.fromRGB(50, 50, 80)
     Frame.BackgroundTransparency = 0.50
     Frame.BorderSizePixel = 0
