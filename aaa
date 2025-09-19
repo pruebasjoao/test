@@ -1,5 +1,5 @@
 ---Ediciones
----casi complto solo falta la busquedaaaaaa.
+---casi complto solo falta la busquedaeeeeeee.
 
 local JmodsLib = {}
 JmodsLib.__index = JmodsLib
@@ -2007,7 +2007,18 @@ function JmodsLib:CreateTab(name)
             pcall(options.Callback, InputBox.Text)
         end
     end)
+    -- Conectar evento FocusLost para aplicar automáticamente sin necesidad de Enter
+    Input.FocusLost:Connect(function(enterPressed)
+        local texto = Input.Text
+        -- Aquí llamas a tu lógica de búsqueda u otra acción
+        if options and options.Callback then
+            pcall(function()
+                options.Callback(texto)
+            end)
+        end
+    end)
 
+    
     return InputBox
 end
 
