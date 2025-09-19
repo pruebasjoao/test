@@ -989,14 +989,16 @@ Instance.new("UICorner", ThemeButton).CornerRadius = UDim.new(0, 8)
     ThemeTitle.BackgroundTransparency = 1
     ThemeTitle.TextXAlignment = Enum.TextXAlignment.Center
 
-    local ThemeScroll = Instance.new("ScrollingFrame", ThemeFrame)
-    ThemeScroll.Size = UDim2.new(1, -12, 1, -40)
-    ThemeScroll.Position = UDim2.new(0, 6, 0, 34)
-    ThemeScroll.BackgroundTransparency = 1
-    ThemeScroll.BorderSizePixel = 0
-    ThemeScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    ThemeScroll.ScrollBarThickness = 4
-    ThemeScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+local ThemeScroll = Instance.new("ScrollingFrame", ThemeFrame)
+ThemeScroll.Size = UDim2.new(1, -12, 1, -40)
+ThemeScroll.Position = UDim2.new(0, 6, 0, 34)
+ThemeScroll.BackgroundTransparency = 1
+ThemeScroll.BorderSizePixel = 0
+ThemeScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+ThemeScroll.ScrollBarThickness = 4
+ThemeScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ThemeScroll.ScrollingDirection = Enum.ScrollingDirection.Y -- ✅ solo scroll vertical
+
 
     local ThemeLayout = Instance.new("UIListLayout", ThemeScroll)
     ThemeLayout.SortOrder = Enum.SortOrder.LayoutOrder
