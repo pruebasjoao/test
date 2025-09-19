@@ -1123,7 +1123,7 @@ ThemeScroll.ScrollingDirection = Enum.ScrollingDirection.Y -- ✅ solo scroll ve
 local ResizeButton
 if options.DragImage then
     ResizeButton = Instance.new("ImageButton", MainFrame)
-    ResizeButton.Size = UDim2.new(0, 20, 0, 20)
+    ResizeButton.Size = UDim2.new(0, 25, 0, 25)
     ResizeButton.AnchorPoint = Vector2.new(1, 1)
     ResizeButton.BackgroundTransparency = 1
     ResizeButton.Image = "rbxassetid://" .. tostring(options.DragImage)
