@@ -1,5 +1,5 @@
 ---Ediciones
----casi complto solo falta la aaaaa.
+---casi complto solo falta la busquedaaaa.
 
 local JmodsLib = {}
 JmodsLib.__index = JmodsLib
@@ -930,15 +930,22 @@ end
 
     -- Botón flotante para móvil (arriba, centrado)
     local FloatingButton = Instance.new("TextButton")
-    FloatingButton.Size = UDim2.new(0, 120, 0, 30)
-    FloatingButton.Position = UDim2.new(0.5, -60, 0, -5)
+    local UserInputService = game:GetService("UserInputService")
+    if UserInputService.TouchEnabled then
+        FloatingButton.Size = UDim2.new(0, 100, 0, 26)
+        FloatingButton.Position = UDim2.new(0.5, -50, 0, 15)
+        FloatingButton.TextSize = 12
+    else
+        FloatingButton.Size = UDim2.new(0, 120, 0, 30)
+        FloatingButton.Position = UDim2.new(0.5, -60, 0, 5)
+        FloatingButton.TextSize = 14
+    end
     FloatingButton.AnchorPoint = Vector2.new(0, 0)
     FloatingButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
     FloatingButton.BackgroundTransparency = 0.4
     FloatingButton.Text = options.Name or "UI"
     FloatingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     FloatingButton.Font = Enum.Font.GothamBold
-    FloatingButton.TextSize = 14
     FloatingButton.Visible = false
     Instance.new("UICorner", FloatingButton).CornerRadius = UDim.new(0, 12)
     FloatingButton.Parent = ScreenGui
@@ -1321,7 +1328,16 @@ end
             applyColorsSmooth(config[1], config[2], config[3])
         end
         
-            end)
+        -- Mostrar notificación de tema cargado
+        spawn(function()
+            wait(0.5)
+            JmodsLib:Notify({
+                Title = "Sistema Cargado",
+                Content = "Tema cargado: " .. CurrentTheme .. "\nAuto-guardado activado",
+                Duration = 4
+            })
+        end)
+    end)
 
     -- Animación de entrada del ícono (si existe)
     if TitleIcon and options.Intro then
@@ -2345,15 +2361,70 @@ end
 -- Notificaciones MEJORADAS (evitar solapamiento – se destruye la anterior antes de mostrar la nueva)
 local LastNotification = nil
 
+-- Ajustes para NOTIFICACIONES
 function JmodsLib:Notify(options)
     options = options or {}
-    local CoreGui = game:GetService("CoreGui")
-    local ScreenGui = CoreGui:FindFirstChild("JmodsLibNotify")
+    local title = options.Title or "Notificación"
+    local content = options.Content or ""
+    local duration = options.Duration or 3
+
+    local ScreenGui = game:GetService("CoreGui"):FindFirstChild("JmodsLibNotify")
     if not ScreenGui then
-        ScreenGui = Instance.new("ScreenGui", CoreGui)
+        ScreenGui = Instance.new("ScreenGui")
         ScreenGui.Name = "JmodsLibNotify"
-        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        ScreenGui.Parent = game:GetService("CoreGui")
     end
+
+    local UserInputService = game:GetService("UserInputService")
+
+    -- Frame de la notificación
+    local NotifyFrame = Instance.new("Frame", ScreenGui)
+    if UserInputService.TouchEnabled then
+        -- En móvil: más arriba y más pequeño
+        NotifyFrame.Size = UDim2.new(0, 260, 0, 70)
+        NotifyFrame.Position = UDim2.new(0.5, -130, 0, 35)
+    else
+        -- En PC: tamaño normal
+        NotifyFrame.Size = UDim2.new(0, 300, 0, 90)
+        NotifyFrame.Position = UDim2.new(0.5, -150, 0, 50)
+    end
+    NotifyFrame.BackgroundColor3 = JmodsLib.Theme.Accent
+    NotifyFrame.BorderSizePixel = 0
+    NotifyFrame.BackgroundTransparency = 0.1
+    NotifyFrame.AnchorPoint = Vector2.new(0.5, 0)
+    NotifyFrame.ZIndex = 200
+    Instance.new("UICorner", NotifyFrame).CornerRadius = UDim.new(0, 10)
+
+    -- Texto título
+    local Title = Instance.new("TextLabel", NotifyFrame)
+    Title.Size = UDim2.new(1, -10, 0, 24)
+    Title.Position = UDim2.new(0, 5, 0, 5)
+    Title.Text = title
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = UserInputService.TouchEnabled and 14 or 16
+    Title.TextColor3 = Color3.fromRGB(255,255,255)
+    Title.BackgroundTransparency = 1
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Texto contenido
+    local Content = Instance.new("TextLabel", NotifyFrame)
+    Content.Size = UDim2.new(1, -10, 0, 30)
+    Content.Position = UDim2.new(0, 5, 0, 30)
+    Content.Text = content
+    Content.Font = Enum.Font.Gotham
+    Content.TextSize = UserInputService.TouchEnabled and 12 or 14
+    Content.TextColor3 = Color3.fromRGB(230,230,230)
+    Content.BackgroundTransparency = 1
+    Content.TextWrapped = true
+    Content.TextXAlignment = Enum.TextXAlignment.Left
+    Content.TextYAlignment = Enum.TextYAlignment.Top
+
+    -- Autodestruir
+    task.spawn(function()
+        wait(duration)
+        NotifyFrame:Destroy()
+    end)
+end
 
     -- Si existe una notificación previa, eliminarla inmediatamente (evita solapamiento)
     if LastNotification and LastNotification.Parent then
@@ -2374,8 +2445,8 @@ function JmodsLib:Notify(options)
 
     local Frame = Instance.new("Frame", ScreenGui)
     Frame.Name = "NotificationFrame"
-    Frame.Size = UserInputService.TouchEnabled and UDim2.new(0, 240, 0, 56) or UDim2.new(0, 300, 0, 68) -- tamaño reducido
-    Frame.Position = UDim2.new(1, -320, 0, 30)
+    Frame.Size = UDim2.new(0, 300, 0, 68) -- tamaño reducido
+    Frame.Position = UDim2.new(1, -320, 0, 60)
     Frame.BackgroundColor3 = theme.Accent or Color3.fromRGB(50, 50, 80)
     Frame.BackgroundTransparency = 0.05
     Frame.BorderSizePixel = 0
