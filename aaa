@@ -1778,7 +1778,7 @@ function JmodsLib:CreateTab(name)
         
         local Popup = Instance.new("Frame", ScreenGui)
         Popup.Name = "ColorPickerPopup"
-        Popup.Size = UDim2.new(0, 250, 0, 170) -- Más pequeño sin botón confirmar
+        Popup.Size = UDim2.new(0, 200, 0, 140) -- Más pequeño sin botón confirmar (0, 250, 0, 170)
         Popup.Position = UDim2.new(0, 0, 0, 0) -- Se posicionará dinámicamente
         Popup.BackgroundColor3 = Color3.fromRGB(35, 35, 50) -- Color base más opaco
         Popup.Visible = false
