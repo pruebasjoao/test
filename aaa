@@ -1775,7 +1775,7 @@ function JmodsLib:CreateTab(name)
         
         local Popup = Instance.new("Frame", ScreenGui)
         Popup.Name = "ColorPickerPopup"
-        Popup.Size = UDim2.new(0, 250, 0, 170) -- Más pequeño sin botón confirmar
+        Popup.Size = UDim2.new(0, 200, 0, 140) -- Más pequeño sin botón confirmar (0, 250, 0, 170) normal
         Popup.Position = UDim2.new(0, 0, 0, 0) -- Se posicionará dinámicamente
         Popup.BackgroundColor3 = Color3.fromRGB(35, 35, 50) -- Color base más opaco
         Popup.Visible = false
@@ -1800,7 +1800,7 @@ function JmodsLib:CreateTab(name)
         local Picker = Instance.new("ImageButton", Popup)
         Picker.Size = UDim2.new(1, -20, 1, -20) -- Ocupa casi todo el popup
         Picker.Position = UDim2.new(0, 10, 0, 10)
-        Picker.Image = "rbxassetid://328298876"
+        Picker.Image = "rbxassetid://89855059397805"
         Picker.BackgroundTransparency = 1
         Picker.ZIndex = 101
 
@@ -2237,7 +2237,7 @@ end
         Arrow.Size = UDim2.new(0, 14, 0, 14)
         Arrow.Position = UDim2.new(0.5, -7, 0.5, -7)
         Arrow.BackgroundTransparency = 1
-        Arrow.Image = "rbxassetid://3926305904"
+        Arrow.Image = "rbxassetid://16848361125" ---Dropdown imagen
         Arrow.ImageColor3 = Color3.fromRGB(255,255,255)
 
         -- Lista con scrollbar
