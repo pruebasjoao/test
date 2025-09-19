@@ -2530,7 +2530,7 @@ createAutoThemeObserver()
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
---print("📝 Tema actual: " .. CurrentTheme)
---print("💾 Auto-guardado: ACTIVADO")
+print("📝 Tema actual: " .. CurrentTheme)
+print("💾 Auto-guardado: ACTIVADO")
 
 return JmodsLib
