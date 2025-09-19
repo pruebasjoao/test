@@ -1,5 +1,5 @@
 ---Ediciones
----casi complto solo falta la busquedaeeeeeeeeeeeeeeeeeeeeeee.
+---casi complto solo falta la busqueda.
 
 local JmodsLib = {}
 JmodsLib.__index = JmodsLib
@@ -1704,7 +1704,7 @@ function JmodsLib:CreateTab(name)
         end)
 
         UIS.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
                 local raw = min + (max - min) * pos
                 setValue(raw)
