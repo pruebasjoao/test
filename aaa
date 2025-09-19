@@ -1254,7 +1254,7 @@ end
         if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - startPos
             local newX = math.max(420, startSize.X.Offset + delta.X)
-            local newY = math.max(190, startSize.Y.Offset + delta.Y) ----de arriba pa bajo limite
+            local newY = math.max(190, startSize.Y.Offset + delta.Y) ----tamaño normal 260 de arriba pa bajo limite
             MainFrame.Size = UDim2.new(0, newX, 0, newY)
 
             -- Actualizar posición del botón resize automáticamente
