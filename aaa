@@ -659,7 +659,7 @@ function JmodsLib:CreateIntro(options)
     local ProgressBack = Instance.new("Frame", IntroFrame)
     ProgressBack.Size = UDim2.new(0.8, 0, 0, 6)
     ProgressBack.Position = UDim2.new(0.1, 0, 0, 260)
-    ProgressBack.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+ProgressBack.BackgroundColor3 = themeBaseColor
     ProgressBack.BorderSizePixel = 0
     ProgressBack.BackgroundTransparency = 1
     ProgressBack.ZIndex = 102
@@ -667,7 +667,7 @@ function JmodsLib:CreateIntro(options)
 
     local ProgressFill = Instance.new("Frame", ProgressBack)
     ProgressFill.Size = UDim2.new(0, 0, 1, 0)
-    ProgressFill.BackgroundColor3 = Color3.fromRGB(120, 160, 255)
+ProgressFill.BackgroundColor3 = themeAccentColor
     ProgressFill.BorderSizePixel = 0
     ProgressFill.ZIndex = 103
     Instance.new("UICorner", ProgressFill).CornerRadius = UDim.new(1, 0)
