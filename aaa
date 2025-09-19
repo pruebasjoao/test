@@ -59,7 +59,7 @@ local function loadSavedTheme()
     end)
     
     if success then
-        print("🎨 Tema cargado: " .. (result or ThemeStorage.DefaultTheme))
+       --- print("🎨 Tema cargado: " .. (result or ThemeStorage.DefaultTheme))
         return result or ThemeStorage.DefaultTheme
     else
         print("⚠️ No se pudo cargar el tema, usando por defecto: " .. ThemeStorage.DefaultTheme)
@@ -86,7 +86,7 @@ local function saveTheme(themeName)
             local filePath = ThemeStorage.FolderName .. "/" .. ThemeStorage.FileName
             writefile(filePath, encoded)
             
-            print("💾 Tema guardado automáticamente: " .. themeName)
+          ---  print("💾 Tema guardado automáticamente: " .. themeName)
         end
     end)
     
@@ -2533,7 +2533,7 @@ createAutoThemeObserver()
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-print("📝 Tema actual: " .. CurrentTheme)
-print("💾 Auto-guardado: ACTIVADO")
+---print("📝 Tema actual: " .. CurrentTheme)
+---print("💾 Auto-guardado: ACTIVADO")
 
 return JmodsLib
