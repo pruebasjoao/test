@@ -596,25 +596,327 @@ local function applyPendingTheme()
     end
 end
 
--- Crear Intro Animada (Opcional)
+
+
+
+
+
+
+----------------------------
+
+
+local IntroAnimations = {
+    -- Animación 1: Entrada con escala y rotación
+    [1] = function(IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+        -- Configuración inicial
+        IntroFrame.Size = UDim2.new(0, 0, 0, 0)
+        IntroFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        IntroFrame.Rotation = -180
+        ImageLabel.ImageTransparency = 1
+        ImageLabel.Size = UDim2.new(0, 0, 0, 0)
+        Title.TextTransparency = 1
+        Subtitle.TextTransparency = 1
+        ProgressBack.BackgroundTransparency = 1
+
+        -- Animación del frame principal
+        local frameEnter = TweenService:Create(IntroFrame, 
+            TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 420, 0, 310),
+                Position = UDim2.new(0.5, -210, 0.5, -155),
+                Rotation = 0
+            })
+        frameEnter:Play()
+
+        wait(0.3)
+        
+        -- Animación de la imagen con elastic
+        local imageEnter = TweenService:Create(ImageLabel, 
+            TweenInfo.new(0.6, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 120, 0, 120),
+                ImageTransparency = 0
+            })
+        imageEnter:Play()
+
+        wait(0.2)
+        
+        -- Animaciones de texto
+        TweenService:Create(Title, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+        wait(0.1)
+        TweenService:Create(Subtitle, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+        wait(0.1)
+        TweenService:Create(ProgressBack, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    end,
+
+    -- Animación 2: Entrada deslizante con rebote
+    [2] = function(IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+        IntroFrame.Position = UDim2.new(-0.5, -210, 0.5, -155)
+        ImageLabel.ImageTransparency = 1
+        ImageLabel.Position = UDim2.new(1.5, -60, 0, 30)
+        Title.TextTransparency = 1
+        Title.Position = UDim2.new(-1, 10, 0, 160)
+        Subtitle.TextTransparency = 1
+        Subtitle.Position = UDim2.new(1, 10, 0, 205)
+        ProgressBack.BackgroundTransparency = 1
+
+        -- Frame principal desde la izquierda
+        local frameEnter = TweenService:Create(IntroFrame, 
+            TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, -210, 0.5, -155)
+            })
+        frameEnter:Play()
+
+        wait(0.2)
+        
+        -- Imagen desde la derecha con rebote
+        local imageEnter = TweenService:Create(ImageLabel, 
+            TweenInfo.new(0.8, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, -60, 0, 30),
+                ImageTransparency = 0
+            })
+        imageEnter:Play()
+
+        -- Título desde la izquierda
+        local titleEnter = TweenService:Create(Title, 
+            TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 10, 0, 160),
+                TextTransparency = 0
+            })
+        titleEnter:Play()
+
+        wait(0.1)
+        
+        -- Subtítulo desde la derecha
+        local subtitleEnter = TweenService:Create(Subtitle, 
+            TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 10, 0, 205),
+                TextTransparency = 0
+            })
+        subtitleEnter:Play()
+
+        wait(0.1)
+        TweenService:Create(ProgressBack, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    end,
+
+    -- Animación 3: Entrada en espiral
+    [3] = function(IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+        IntroFrame.Size = UDim2.new(0, 100, 0, 100)
+        IntroFrame.Position = UDim2.new(0.5, -50, 0.5, -50)
+        IntroFrame.Rotation = 360
+        ImageLabel.ImageTransparency = 1
+        ImageLabel.Rotation = -720
+        Title.TextTransparency = 1
+        Title.TextStrokeTransparency = 0.5
+        Subtitle.TextTransparency = 1
+        ProgressBack.BackgroundTransparency = 1
+
+        -- Frame con espiral
+        local frameEnter = TweenService:Create(IntroFrame, 
+            TweenInfo.new(1.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 420, 0, 310),
+                Position = UDim2.new(0.5, -210, 0.5, -155),
+                Rotation = 0
+            })
+        frameEnter:Play()
+
+        wait(0.4)
+        
+        -- Imagen girando
+        local imageEnter = TweenService:Create(ImageLabel, 
+            TweenInfo.new(0.8, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                ImageTransparency = 0,
+                Rotation = 0
+            })
+        imageEnter:Play()
+
+        wait(0.3)
+        
+        -- Textos con efecto de brillo
+        TweenService:Create(Title, TweenInfo.new(0.5), {TextTransparency = 0, TextStrokeTransparency = 1}):Play()
+        wait(0.1)
+        TweenService:Create(Subtitle, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        wait(0.1)
+        TweenService:Create(ProgressBack, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    end,
+
+    -- Animación 4: Entrada tipo "drop"
+    [4] = function(IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+        IntroFrame.Position = UDim2.new(0.5, -210, -0.5, -155)
+        IntroFrame.Size = UDim2.new(0, 420, 0, 50)
+        ImageLabel.ImageTransparency = 1
+        ImageLabel.Size = UDim2.new(0, 60, 0, 60)
+        ImageLabel.Position = UDim2.new(0.5, -30, 0, -100)
+        Title.TextTransparency = 1
+        Title.Position = UDim2.new(0, 10, 0, -50)
+        Subtitle.TextTransparency = 1
+        Subtitle.Position = UDim2.new(0, 10, 0, -20)
+        ProgressBack.BackgroundTransparency = 1
+
+        -- Frame cayendo
+        local frameEnter = TweenService:Create(IntroFrame, 
+            TweenInfo.new(0.8, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, -210, 0.5, -155)
+            })
+        frameEnter:Play()
+
+        wait(0.3)
+
+        -- Expandir frame
+        local frameExpand = TweenService:Create(IntroFrame, 
+            TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 420, 0, 310)
+            })
+        frameExpand:Play()
+
+        wait(0.2)
+        
+        -- Imagen rebotando hacia su posición
+        local imageEnter = TweenService:Create(ImageLabel, 
+            TweenInfo.new(0.7, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, -60, 0, 30),
+                Size = UDim2.new(0, 120, 0, 120),
+                ImageTransparency = 0
+            })
+        imageEnter:Play()
+
+        -- Textos subiendo
+        local titleEnter = TweenService:Create(Title, 
+            TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 10, 0, 160),
+                TextTransparency = 0
+            })
+        titleEnter:Play()
+
+        wait(0.1)
+        
+        local subtitleEnter = TweenService:Create(Subtitle, 
+            TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 10, 0, 205),
+                TextTransparency = 0
+            })
+        subtitleEnter:Play()
+
+        wait(0.1)
+        TweenService:Create(ProgressBack, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+    end,
+
+-- Animación 5: Fade-In con Zoom
+[5] = function(IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+    -- Estado inicial
+    IntroFrame.BackgroundTransparency = 1
+    IntroFrame.Size = UDim2.new(0, 420, 0, 310)
+    IntroFrame.Position = UDim2.new(0.5, -210, 0.5, -155)
+    IntroFrame.Size = UDim2.new(0.8, 0, 0.8, 0)
+    IntroFrame.BackgroundTransparency = 1
+    ImageLabel.ImageTransparency = 1
+    Title.TextTransparency = 1
+    Subtitle.TextTransparency = 1
+    ProgressBack.BackgroundTransparency = 1
+
+    -- Zoom + fade
+    TweenService:Create(IntroFrame,
+        TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+        {Size = UDim2.new(1, 0, 1, 0)}
+    ):Play()
+
+    wait(0.2)
+    TweenService:Create(ImageLabel, TweenInfo.new(0.6), {ImageTransparency = 0}):Play()
+    wait(0.1)
+    TweenService:Create(Title, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
+    wait(0.1)
+    TweenService:Create(Subtitle, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
+    wait(0.1)
+    TweenService:Create(ProgressBack, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
+end,
+
+-- Animación 6: Rebote desde las esquinas
+[6] = function(IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+    -- Posición y opacidad inicial
+    IntroFrame.BackgroundTransparency = 1
+    IntroFrame.Size = UDim2.new(0, 420, 0, 310)
+    IntroFrame.Position = UDim2.new(-0.5, -210, -0.5, -155)
+    ImageLabel.ImageTransparency = 1
+    Title.TextTransparency = 1
+    Subtitle.TextTransparency = 1
+    ProgressBack.BackgroundTransparency = 1
+
+    -- Movimiento en diagonal hacia el centro
+    TweenService:Create(IntroFrame,
+        TweenInfo.new(0.9, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        {Position = UDim2.new(0.5, -210, 0.5, -155)}
+    ):Play()
+
+    wait(0.3)
+    TweenService:Create(ImageLabel, TweenInfo.new(0.6), {ImageTransparency = 0}):Play()
+    wait(0.1)
+    TweenService:Create(Title, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
+    wait(0.1)
+    TweenService:Create(Subtitle, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
+    wait(0.1)
+    TweenService:Create(ProgressBack, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
+end,
+
+
+
+}
+
+
+
+--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- FUNCIÓN MODIFICADA PARA CREAR INTRO CON ANIMACIONES
 function JmodsLib:CreateIntro(options)
     options = options or {}
     local imageId = options.IntroIcon or options.Image or options.Icon or 128308831323216
+    
+    -- Determinar qué animación usar
+    local animationIntro = options.AnimationIntro
+    local selectedAnimation = nil
+    
+    if animationIntro == 0 then
+        -- Modo aleatorio: seleccionar una animación al azar (1-6)
+        selectedAnimation = math.random(1, 6)
+    elseif animationIntro and animationIntro >= 1 and animationIntro <= 5 then
+        -- Usar animación específica
+        selectedAnimation = animationIntro
+    end
+    -- Si no se especifica AnimationIntro, selectedAnimation queda nil (sin animación)
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Parent = game:GetService("CoreGui")
     ScreenGui.Name = "JmodsLibIntro"
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Fondo completamente transparente (sin fondo negro)
+    -- Fondo transparente
     local Background = Instance.new("Frame", ScreenGui)
     Background.Size = UDim2.new(1, 0, 1, 0)
     Background.Position = UDim2.new(0, 0, 0, 0)
-    Background.BackgroundTransparency = 1 -- Completamente transparente
+    Background.BackgroundTransparency = 1
     Background.BorderSizePixel = 0
     Background.ZIndex = 100
 
-    -- Frame principal de la intro
+    -- Frame principal
     local IntroFrame = Instance.new("Frame", ScreenGui)
     IntroFrame.Size = UDim2.new(0, 420, 0, 310)
     IntroFrame.Position = UDim2.new(0.5, -210, 0.5, -155)
@@ -624,7 +926,7 @@ function JmodsLib:CreateIntro(options)
     IntroFrame.ZIndex = 101
     Instance.new("UICorner", IntroFrame).CornerRadius = UDim.new(0, 16)
 
-    -- Imagen principal (grande como antes)
+    -- Imagen principal
     local ImageLabel = Instance.new("ImageLabel", IntroFrame)
     ImageLabel.Size = UDim2.new(0, 120, 0, 120)
     ImageLabel.Position = UDim2.new(0.5, -60, 0, 30)
@@ -662,7 +964,7 @@ function JmodsLib:CreateIntro(options)
     local ProgressBack = Instance.new("Frame", IntroFrame)
     ProgressBack.Size = UDim2.new(0.8, 0, 0, 6)
     ProgressBack.Position = UDim2.new(0.1, 0, 0, 260)
-    ProgressBack.BackgroundColor3 = Color3.fromRGB(70, 70, 100)
+    ProgressBack.BackgroundColor3 = JmodsLib.Theme.Base
     ProgressBack.BorderSizePixel = 0
     ProgressBack.BackgroundTransparency = 1
     ProgressBack.ZIndex = 102
@@ -670,53 +972,47 @@ function JmodsLib:CreateIntro(options)
 
     local ProgressFill = Instance.new("Frame", ProgressBack)
     ProgressFill.Size = UDim2.new(0, 0, 1, 0)
-    ProgressFill.BackgroundColor3 = Color3.fromRGB(120, 160, 255)
+    ProgressFill.BackgroundColor3 = JmodsLib.Theme.Accent
     ProgressFill.BorderSizePixel = 0
     ProgressFill.ZIndex = 103
     Instance.new("UICorner", ProgressFill).CornerRadius = UDim.new(1, 0)
 
     local TweenService = game:GetService("TweenService")
 
-    -- Animaciones de entrada
-    local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-
-    -- Animar frame principal
-    IntroFrame.Position = UDim2.new(0.5, -210, 0.5, -185)
-    IntroFrame.Size = UDim2.new(0, 360, 0, 260)
-
-    local frameEnter = TweenService:Create(IntroFrame, tweenInfo, {
-        Position = UDim2.new(0.5, -210, 0.5, -155),
-        Size = UDim2.new(0, 420, 0, 310)
-    })
-
-    -- Animar imagen
-    local imageEnter = TweenService:Create(ImageLabel, tweenInfo, {
-        ImageTransparency = 0
-    })
-
-    -- Animar textos
-    local titleEnter = TweenService:Create(Title, tweenInfo, {
-        TextTransparency = 0
-    })
-
-    local subtitleEnter = TweenService:Create(Subtitle, tweenInfo, {
-        TextTransparency = 0
-    })
-
-    local progressEnter = TweenService:Create(ProgressBack, tweenInfo, {
-        BackgroundTransparency = 0.0
-    })
-
-    -- Ejecutar animaciones
-    frameEnter:Play()
-    wait(0.2)
-    imageEnter:Play()
-    wait(0.1)
-    titleEnter:Play()
-    wait(0.1)
-    subtitleEnter:Play()
-    wait(0.1)
-    progressEnter:Play()
+    -- EJECUTAR ANIMACIÓN SI ESTÁ DISPONIBLE
+    if selectedAnimation and IntroAnimations[selectedAnimation] then
+        -- Mostrar qué animación se está usando (opcional)
+        if animationIntro == 0 then
+           -- print("🎬 Animación aleatoria seleccionada: " .. selectedAnimation)
+        else
+           -- print("🎬 Ejecutando animación: " .. selectedAnimation)
+        end
+        
+        -- Ejecutar la animación seleccionada
+        IntroAnimations[selectedAnimation](IntroFrame, ImageLabel, Title, Subtitle, ProgressBack, ProgressFill, TweenService)
+    else
+        -- Animación por defecto (la original sin efectos especiales)
+        IntroFrame.BackgroundTransparency = 1
+        
+        local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+        
+        -- Animar elementos básicos
+        local imageEnter = TweenService:Create(ImageLabel, tweenInfo, {ImageTransparency = 0})
+        local titleEnter = TweenService:Create(Title, tweenInfo, {TextTransparency = 0})
+        local subtitleEnter = TweenService:Create(Subtitle, tweenInfo, {TextTransparency = 0})
+        local progressEnter = TweenService:Create(ProgressBack, tweenInfo, {BackgroundTransparency = 0})
+        
+        imageEnter:Play()
+        wait(0.1)
+        titleEnter:Play()
+        wait(0.1)
+        subtitleEnter:Play()
+        wait(0.1)
+        progressEnter:Play()
+        
+        -- Hacer visible el frame
+        TweenService:Create(IntroFrame, tweenInfo, {BackgroundTransparency = 1}):Play()
+    end
 
     -- Animar barra de progreso
     wait(0.5)
@@ -725,21 +1021,23 @@ function JmodsLib:CreateIntro(options)
     })
     progressTween:Play()
 
-    -- Rotación suave de la imagen
-    spawn(function()
-        while ScreenGui.Parent do
-            local rotateTween = TweenService:Create(ImageLabel, TweenInfo.new(6, Enum.EasingStyle.Linear), {
-                Rotation = ImageLabel.Rotation + 360
-            })
-            rotateTween:Play()
-            wait(6)
-        end
-    end)
+    -- Rotación de la imagen (solo si no es una animación que ya maneja la rotación)
+    if not selectedAnimation or (selectedAnimation ~= 3 and selectedAnimation ~= 6) then
+        spawn(function()
+            while ScreenGui.Parent do
+                local rotateTween = TweenService:Create(ImageLabel, TweenInfo.new(6, Enum.EasingStyle.Linear), {
+                    Rotation = ImageLabel.Rotation + 360
+                })
+                rotateTween:Play()
+                wait(6)
+            end
+        end)
+    end
 
-    -- Esperar duración especificada
+    -- Esperar duración
     wait(options.Duration or 3)
 
-    -- Animaciones de salida
+    -- Animación de salida
     local exitTween = TweenService:Create(IntroFrame, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
         Size = UDim2.new(0, 0, 0, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -750,6 +1048,10 @@ function JmodsLib:CreateIntro(options)
     ScreenGui:Destroy()
 end
 
+
+
+
+
 -- Crear ventana principal
 function JmodsLib:CreateWindow(options)
     options = options or {}
@@ -758,19 +1060,33 @@ function JmodsLib:CreateWindow(options)
     local specifiedTheme = nil
     if options.Theme then
         -- Normalizar nombres de temas (Rojo -> red, etc.)
-        local themeMap = {
-            ["negro"] = "black",
-            ["azul"] = "Azul", 
-            ["oscuro"] = "dark",
-            ["rojo"] = "red",
-            ["verde"] = "green",
-            ["morado"] = "purple",
-            ["naranja"] = "orange",
-            ["rosa"] = "pink",
-            ["gris"] = "gray",
-            ["cian"] = "cyan",
-            ["amarillo"] = "yellow"
-        }
+local themeMap = {
+    ["negro"] = "black",
+    ["azul"] = "Azul", 
+    ["oscuro"] = "dark",
+    ["rojo"] = "red",
+    ["verde"] = "green",
+    ["morado"] = "purple",
+    ["naranja"] = "orange",
+    ["rosa"] = "pink",
+    ["gris"] = "gray",
+    ["cian"] = "cyan",
+    ["amarillo"] = "yellow",
+    ["turquesa"] = "turquoise",
+    ["marron"] = "brown",
+    ["dorado"] = "gold",
+    ["plateado"] = "silver",
+    ["neon"] = "neon",
+    ["oscuro neon"] = "dark_neon",
+    ["neon azul"] = "neon_blue",
+    ["neon rojo"] = "neon_red",
+    ["neon verde"] = "neon_green",
+    ["neon amarillo"] = "neon_yellow",
+    ["neon rosa"] = "neon_pink",
+    ["neon naranja"] = "neon_orange",
+    ["neon violeta"] = "neon_violet",
+    ["neon blanco"] = "neon_white"
+}
         specifiedTheme = themeMap[string.lower(options.Theme)] or options.Theme
     end
     
@@ -813,15 +1129,16 @@ function JmodsLib:CreateWindow(options)
     JmodsLib.Theme = { Base = themeBaseColor, Accent = themeAccentColor, Input = themeInputColor }
 
     -- Si Intro está activado, mostrar la intro primero
-    if options.Intro == true then
-        self:CreateIntro({
-            Name = options.Name,
-            Title = options.LoadingTitle or options.Name,
-            Subtitle = options.LoadingSubtitle or "Cargando interfaz...",
-            Image = options.IntroIcon or options.Icon,
-            Duration = options.LoadingDuration or 3
-        })
-    end
+if options.Intro == true then
+    self:CreateIntro({
+        Name = options.Name,
+        Title = options.LoadingTitle or options.Name,
+        Subtitle = options.LoadingSubtitle or "Cargando interfaz...",
+        Image = options.IntroIcon or options.Icon,
+        Duration = options.LoadingDuration or 3,
+        AnimationIntro = options.AnimationIntro -- ✅ NUEVA LÍNEA
+    })
+end
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Parent = game:GetService("CoreGui")
@@ -2290,6 +2607,9 @@ end
 -- Notificaciones MEJORADAS (evitar solapamiento – se destruye la anterior antes de mostrar la nueva)
 local LastNotification = nil
 
+-- Función mejorada de notificaciones con links clickeables
+local LastNotification = nil
+
 function JmodsLib:Notify(options)
     options = options or {}
     local CoreGui = game:GetService("CoreGui")
@@ -2300,10 +2620,9 @@ function JmodsLib:Notify(options)
         ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     end
 
-    -- Si existe una notificación previa, eliminarla inmediatamente (evita solapamiento)
+    -- Si existe una notificación previa, eliminarla inmediatamente
     if LastNotification and LastNotification.Parent then
         pcall(function()
-            -- Opcional: animar salida rápida antes de destruir
             local TweenService = game:GetService("TweenService")
             local endPos = UDim2.new(1, 20, LastNotification.Position.Y.Scale, LastNotification.Position.Y.Offset)
             pcall(function()
@@ -2316,26 +2635,106 @@ function JmodsLib:Notify(options)
     end
 
     local theme = JmodsLib.Theme or { Base = Color3.fromRGB(25,25,35), Accent = Color3.fromRGB(70,70,120), Input = Color3.fromRGB(255,255,255) }
+    local UserInputService = game:GetService("UserInputService")
 
-local UserInputService = game:GetService("UserInputService")
+    -- Función para detectar y extraer links
+    local function detectLinks(text)
+        local links = {}
+        local patterns = {
+            "https?://[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]+",
+            "www%.[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]+",
+            "[%w%.%-_]+%.com[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]*",
+            "[%w%.%-_]+%.org[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]*",
+            "[%w%.%-_]+%.net[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]*",
+            "[%w%.%-_]+%.edu[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]*",
+            "[%w%.%-_]+%.io[%w%.%-_~:/?#%[%]@!$&'%(%)%*+,;=]*"
+        }
+        
+        for _, pattern in ipairs(patterns) do
+            for match in text:gmatch(pattern) do
+                table.insert(links, match)
+            end
+        end
+        
+        return links
+    end
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Name = "NotificationFrame"
+    -- Función para obtener nombre corto del dominio
+    local function getShortName(url)
+        local domain = url:match("://([^/]+)") or url:match("www%.([^/]+)") or url:match("([^/%.]+%.[^/%.]+)")
+        if not domain then return url end
+        
+        domain = domain:lower()
+        
+        -- Mapeo de dominios a nombres cortos
+        local shortNames = {
+            ["youtube.com"] = "YouTube",
+            ["youtu.be"] = "YouTube", 
+            ["tiktok.com"] = "TikTok",
+            ["twitter.com"] = "Twitter",
+            ["x.com"] = "Twitter",
+            ["facebook.com"] = "Facebook",
+            ["instagram.com"] = "Instagram",
+            ["discord.com"] = "Discord",
+            ["github.com"] = "GitHub",
+            ["reddit.com"] = "Reddit",
+            ["twitch.tv"] = "Twitch",
+            ["spotify.com"] = "Spotify",
+            ["netflix.com"] = "Netflix",
+            ["amazon.com"] = "Amazon",
+            ["google.com"] = "Google",
+            ["microsoft.com"] = "Microsoft",
+            ["apple.com"] = "Apple",
+            ["roblox.com"] = "Roblox"
+        }
+        
+        -- Buscar coincidencia exacta
+        if shortNames[domain] then
+            return shortNames[domain]
+        end
+        
+        -- Buscar coincidencia parcial
+        for domainPattern, name in pairs(shortNames) do
+            if domain:find(domainPattern:gsub("%.", "%.")) then
+                return name
+            end
+        end
+        
+        -- Si no encuentra coincidencia, usar el dominio principal
+        local mainDomain = domain:match("([^%.]+)%.%w+$") or domain
+        return mainDomain:sub(1,1):upper() .. mainDomain:sub(2)
+    end
 
-if UserInputService.TouchEnabled then
-    -- En móvil: más pequeñas
-    Frame.Size = UDim2.new(0, 240, 0, 54)
-else
-    -- En PC: tamaño normal
-    Frame.Size = UDim2.new(0, 300, 0, 68)
+    -- Función para copiar al portapapeles (PC y móvil)
+local function copyToClipboard(text)
+    pcall(function()
+        if setclipboard then
+            setclipboard(text)
+            -- Solo copia al portapapeles silenciosamente
+        else
+            -- Fallback móvil: podrías usar print o nada
+           
+        end
+    end)
 end
 
-Frame.Position = UDim2.new(1, -320, 0, -20) ---posi noti
-Frame.BackgroundColor3 = theme.Accent or Color3.fromRGB(50, 50, 80)
-Frame.BackgroundTransparency = 0.50
-Frame.BorderSizePixel = 0
-Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
 
+
+    -- Crear frame principal
+    local Frame = Instance.new("Frame", ScreenGui)
+    Frame.Name = "NotificationFrame"
+
+    if UserInputService.TouchEnabled then
+        Frame.Size = UDim2.new(0, 240, 0, 54)
+    else
+        Frame.Size = UDim2.new(0, 300, 0, 68)
+    end
+
+    Frame.Position = UDim2.new(1, -320, 0, -20)
+    Frame.BackgroundColor3 = theme.Accent or Color3.fromRGB(50, 50, 80)
+    Frame.BackgroundTransparency = 0.1
+    Frame.BorderSizePixel = 0
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 12)
 
     -- Título
     local Title = Instance.new("TextLabel", Frame)
@@ -2349,32 +2748,76 @@ Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
     Title.BackgroundTransparency = 1
     Title.TextXAlignment = Enum.TextXAlignment.Left
 
+    -- Imagen (si se proporciona)
+    local ImageLabel = nil
+    if options.Image then
+        ImageLabel = Instance.new("ImageLabel", Frame)
+        ImageLabel.Size = UDim2.new(0, 24, 0, 24)
+        ImageLabel.Position = UDim2.new(1, -32, 0, 6)
+        ImageLabel.BackgroundTransparency = 1
+        ImageLabel.Image = "rbxassetid://" .. tostring(options.Image)
+        ImageLabel.ScaleType = Enum.ScaleType.Fit
+        Instance.new("UICorner", ImageLabel).CornerRadius = UDim.new(0, 4)
+    end
+
     -- Separador
     local Separator = Instance.new("Frame", Frame)
     Separator.Name = "Separator"
     Separator.Size = UDim2.new(1, -16, 0, 1)
     Separator.Position = UDim2.new(0, 8, 0, 28)
-    Separator.BackgroundColor3 = theme.Base and theme.Base:Lerp(theme.Accent, 0.22) or Color3.fromRGB(220,220,220)
+    Separator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Separator.BorderSizePixel = 0
-    Separator.BackgroundTransparency = 0.25
+    Separator.BackgroundTransparency = 0.7
 
-    -- Contenido (texto en blanco para máxima legibilidad)
+    -- Procesar contenido y detectar links
+    local contentText = options.Content or ""
+    local links = detectLinks(contentText)
+    
+    -- Contenido único que maneja tanto texto como links
     local Content = Instance.new("TextLabel", Frame)
     Content.Name = "Content"
     Content.Size = UDim2.new(1, -16, 1, -38)
     Content.Position = UDim2.new(0, 8, 0, 32)
-    Content.Text = options.Content or ""
-    Content.Font = Enum.Font.Gotham
-    Content.TextSize = 13
-    Content.TextColor3 = Color3.fromRGB(255, 255, 255) -- blanco fijo
     Content.BackgroundTransparency = 1
     Content.TextXAlignment = Enum.TextXAlignment.Left
     Content.TextWrapped = true
+    Content.Font = Enum.Font.Gotham
+    Content.TextSize = 13
+    Content.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Content.RichText = true -- Habilitar RichText para links clickeables
+    
+    if #links > 0 then
+        -- Procesar el texto reemplazando links por versiones clickeables
+        local processedText = contentText
+        for _, link in ipairs(links) do
+            local shortName = getShortName(link)
+            local clickableLink = '<u><font color="rgb(100,200,255)">🔗 ' .. shortName .. '</font></u>'
+            processedText = processedText:gsub(link, clickableLink, 1)
+        end
+        Content.Text = processedText
+        
+        -- Crear TextButton invisible para detectar clicks
+        local ClickDetector = Instance.new("TextButton", Content)
+        ClickDetector.Size = UDim2.new(1, 0, 1, 0)
+        ClickDetector.BackgroundTransparency = 1
+        ClickDetector.Text = ""
+        ClickDetector.ZIndex = Content.ZIndex + 1
+        
+        ClickDetector.MouseButton1Click:Connect(function()
+            -- Al hacer clic en la notificación, copiar el primer link encontrado
+            if #links > 0 then
+                copyToClipboard(links[1])
+            end
+        end)
+    else
+        Content.Text = contentText
+        Content.RichText = false
+    end
 
-    -- Guardar referencia como la última notificación activa
+    -- Guardar referencia
     LastNotification = Frame
 
-    -- Animación simple de entrada (slide desde la derecha)
+    -- Animación de entrada
     local TweenService = game:GetService("TweenService")
     local startPos = Frame.Position
     Frame.Position = UDim2.new(1, 20, startPos.Y.Scale, startPos.Y.Offset)
@@ -2382,12 +2825,11 @@ Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
         TweenService:Create(Frame, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = startPos}):Play()
     end)
 
-    -- Manejo de tiempo de duración y cierre
+    -- Auto-cerrar
     local duration = options.Duration or 5
     task.spawn(function()
         wait(duration)
         pcall(function()
-            -- Antes de destruir, comprobar si Frame sigue siendo la última notificación
             if LastNotification == Frame then
                 local endPos = UDim2.new(1, 20, Frame.Position.Y.Scale, Frame.Position.Y.Offset)
                 local t1 = TweenService:Create(Frame, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = endPos, BackgroundTransparency = 1})
@@ -2396,7 +2838,6 @@ Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
                 if Frame and Frame.Parent then Frame:Destroy() end
                 if LastNotification == Frame then LastNotification = nil end
             else
-                -- Si ya fue reemplazada por otra notificación, asegurar destrucción en caso de que siga existiendo
                 if Frame and Frame.Parent then Frame:Destroy() end
             end
         end)
